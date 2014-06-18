@@ -79,11 +79,6 @@ newTalent {
 			lx, ly, blocked = line:step()
 		end
 
-		if not tx or not ty or core.fov.distance(self.x, self.y, tx, ty) < 1 then
-			game.logPlayer(self, 'You are too close to rush.')
-			return
-		end
-
 		if not tx or not ty or core.fov.distance(x, y, tx, ty) > 1 then return end
 
 		local sx, sy = self.x, self.y
