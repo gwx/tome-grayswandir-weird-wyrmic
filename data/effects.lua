@@ -38,10 +38,10 @@ newEffect {
 	status = 'beneficial',
 	parameters = {project = 10, sight = -5,},
 	on_gain = function(self, eff)
-		return '#Target# burns with rage!', '+Burning Rage'
+		return '#Target# enters a #ORANGE#Burning Rage#LAST#!', '+Burning Rage'
 	end,
 	on_lose = function(self, eff)
-		return '#Target# has cooled off!', '-Burning Rage'
+		return '#Target# is no longer in a #ORANGE#Burning Rage#LAST#!', '-Burning Rage'
 	end,
 	activate = function(self, eff)
 		self:effectTemporaryValue(eff, 'sight', eff.sight)

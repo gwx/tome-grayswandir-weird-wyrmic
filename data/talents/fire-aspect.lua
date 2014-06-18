@@ -46,7 +46,7 @@ newTalent {
 	end,
 	damage = function(self, t) return self:wwScale {min = 1.3, max = 2.0, talent = t,} end,
 	range = function(self, t) return self:wwScale {min = 3, max = 6, stat = 'str', round = 'floor',} end,
-	duration = function(self, t) return self:wwScale {min = 2, max = 5, talent = t, stat = 'wil',} end,
+	duration = function(self, t) return self:wwScale {min = 5, max = 9, stat = 'wil',} end,
 	project = function(self, t)
 		return self:wwScale {min = 5, max = 35, talent = t, stat = 'wil', scale = 'damage',}
 	end,
@@ -98,7 +98,7 @@ newTalent {
 		end
 	end,
 	info = function(self, t)
-		return ([[Rush forward in a #ORANGE#blind rage#LAST#, striking a target within %d #SLATE#[str]#LAST# spaces for %d%% weapon damage.
+		return ([[Rush forward in a #ORANGE#Burning Rage#LAST#, striking a target within %d #SLATE#[str]#LAST# spaces for %d%% weapon damage.
 This will last for %d #SLATE#[wil]#LAST# turns, giving you %d #SLATE#[wil]#LAST# extra #LIGHT_RED#fire#LAST# damage on melee attacks, but reducing your vision radius by %d #SLATE#[wil]#LAST#.]])
 			:format(util.getval(t.range, self, t),
 							util.getval(t.damage, self, t) * 100,
