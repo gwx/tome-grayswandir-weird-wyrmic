@@ -209,7 +209,7 @@ newTalent {
 	activate = function(self, t) return {} end,
 	deactivate = function(self, t, p) return true end,
 	info = function(self, t)
-		return ([[You have mastered your ability to manipulate flame as a dragon would. You gain %d%% #SLATE#[wil]#LAST# to all #ROYAL_BLUE#lightning#LAST# damage done, and %d%% #ROYAL_BLUE#lightning#LAST# resistance piercing. You regain %.1f equilibrium on any turn in which you deal #ROYAL_BLUE#lightning#LAST# damage.
+		return ([[You have mastered your ability to manipulate lightning as a dragon would. You gain %d%% #SLATE#[wil]#LAST# to all #ROYAL_BLUE#lightning#LAST# damage done, and %d%% #ROYAL_BLUE#lightning#LAST# resistance piercing. You regain %.1f equilibrium on any turn in which you deal #ROYAL_BLUE#lightning#LAST# damage.
 This also reduces the cooldown of #38FF98#Lightning Speed#LAST# by %d.
 Points in this talent count double for the purposes of draconic form talents.]])
 			:format(util.getval(t.inc_damage, self, t),
