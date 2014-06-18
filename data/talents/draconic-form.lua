@@ -50,7 +50,7 @@ local get_element_points = function(self, element)
 		points = points + self:getTalentLevelRaw(type.talents[i])
 	end
 	points = points + self:getTalentLevelRaw(type.talents[4]) * 2
-	return points
+	return self:wwScale {mult = points / 25, min = 0, max = 25,}
 end
 
 local elements = {fire = 'FIRE', ice = 'COLD', storm = 'LIGHTNING', sand = 'PHYSICAL',}
@@ -134,7 +134,7 @@ newTalent {
 	require = make_require(2),
 	points = 5,
 	mode = 'passive',
-	resists = function(self, t) return self:wwScale {min = 0.4, max = 1.6, talent = t,} end,
+	resists = function(self, t) return self:wwScale {min = 0.3, max = 1.2, talent = t,} end,
 	combat_armor_hardiness = function(self, t) return self:wwScale {min = 0, max = 12, talent = t,} end,
 	combat_armor = function(self, t) return self:wwScale {min = 3, max = 20, talent = t,} end,
 	passives = function(self, t, p)

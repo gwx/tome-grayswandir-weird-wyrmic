@@ -36,7 +36,7 @@ function _M:wwScale(t)
 	local value = 5
 	if t.talent then value = value * 0.2 * self:getTalentLevel(t.talent) end
 
-	if t.mult then value = value * t.mult end
+	if t.mult then value = (value - 1) * t.mult + 1 end
 
 	if t.stat then
 		-- For both a talent and stat, the stat = 0 is at 50% power.
