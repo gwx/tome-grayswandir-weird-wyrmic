@@ -45,7 +45,7 @@ newEffect {
 	end,
 	activate = function(self, eff)
 		self:effectTemporaryValue(eff, 'sight', eff.sight)
-		self:effectTemporaryValue(eff, 'melee_project', {FIRE = eff.fire,})
+		self:effectTemporaryValue(eff, 'melee_project', {FIRE = eff.project,})
 		self.bonuses = {}
 		for stat, amount in pairs(self.burning_rage_bonuses or {}) do
 			self.bonuses.stat = amount
