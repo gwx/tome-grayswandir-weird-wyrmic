@@ -189,81 +189,24 @@ newEffect {
 	name = 'WEIRD_LIGHTNING_SPEED', image = 'talents/weird_lightning_speed.png',
 	desc = 'Lightning Speed',
 	long_desc = function(self, eff)
-		local msg = ''
-		if not eff.is_low then
-			msg = '\nAny action other than movement will break this effect.'
-		end
-		return ([[Target is moving incredibly quickly, giving them %d%% extra movement speed and %d%% evasion chance.%s]])
-			:format(eff.speed * 100, eff.evasion, msg)
+		return ([[Target is moving incredibly quickly, giving them %d%% extra movement speed and %d%% evasion chance.
+Any action other than movement will break this effect.]])
+			:format(eff.speed * 100, eff.evasion)
 	end,
 	type = 'physical',
 	subtype = {speed = true, lightning = true, nature = true,},
 	status = 'beneficial',
 	parameters = {speed = 1, evasion = 30,},
 	on_gain = function(self, eff)
-		if not eff.is_low then
-			return '#Target# speeds up!', '+Lightning Speed'
-		end
+		return '#Target# speeds up!', '+Lightning Speed'
 	end,
 	on_lose = function(self, eff)
-		if not eff.is_low then
-			return '#Target# slows down a little!'
-		else
-			return '#Target# slows down!', '-Lightning Speed'
-		end
-	end,
-	callbackOnMove = function(self, eff, moved, force, ox, oy)
-		if ox ~= self.x or oy ~= self.y then eff.moved = true end
+		return '#Target# slows down!', '-Lightning Speed'
 	end,
 	activate = function(self, eff)
-		if eff.is_low then
-			self:effectTemporaryValue(eff, 'movement_speed', eff.speed_low)
-			self:effectTemporaryValue(eff, 'evasion', eff.evasion)
-			eff.speed = eff.speed_low
-		else
-			self:effectTemporaryValue(eff, 'lightning_speed', 1)
-			self:effectTemporaryValue(eff, 'movement_speed', eff.speed_high)
-			self:effectTemporaryValue(eff, 'evasion', eff.evasion)
-			eff.speed = eff.speed_high
-		end
-		self.bonuses = {}
-		for stat, amount in pairs(self.lightning_speed_bonuses or {}) do
-			self.bonuses.stat = amount
-			self:effectTemporaryValue(eff, stat, amount)
-		end
-	end,
-	deactivate = function(self, eff)
-		if eff.is_low then return end
-		eff.__tmpvals = nil
-		eff.is_low = true
-		local low = function() self:setEffect('EFF_WEIRD_LIGHTNING_SPEED', eff.duration_low, eff) end
-		game:onTickEnd(low)
-	end,
-	damage_feedback = function(self, eff, src, value)
-		if self:knowTalent('T_WEIRD_JITTER') then
-			local power = self:callTalent('T_WEIRD_JITTER', 'dodge_percent')
-			power = power * 100 * value / self.max_life
-			if rng.percent(power) then
-				local duration = self:callTalent('T_WEIRD_JITTER', 'dodge_duration')
-				game:playSoundNear(self, 'talents/lightning')
-				local later = function() self:setEffect('EFF_WEIRD_PURE_LIGHTNING', duration, {}) end
-				game:onTickEnd(later)
-			end
-		end
-	end,
-	on_timeout = function(self, eff)
-		if eff.is_low and self:isTalentActive('T_WEIRD_JITTER') then
-			if eff.moved and eff.dur < self:callTalent('T_WEIRD_JITTER', 'max_duration') then
-				local equilibrium = self:callTalent('T_WEIRD_JITTER', 'equilibrium_cost')
-				self:incEquilibrium(equilibrium)
-				if self:equilibriumChance() then
-					eff.dur = eff.dur + 2
-				else
-					self:forceUseTalent('T_WEIRD_JITTER', {no_energy = true,})
-				end
-			end
-		end
-		eff.moved = nil
+		self:effectTemporaryValue(eff, 'lightning_speed', 1)
+		self:effectTemporaryValue(eff, 'movement_speed', eff.speed)
+		self:effectTemporaryValue(eff, 'evasion', eff.evasion)
 	end,}
 
 newEffect {

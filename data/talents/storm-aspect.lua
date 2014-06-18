@@ -45,33 +45,27 @@ newTalent {
 		end
 		return cd
 	end,
-	speed_high = function(self, t) return self:wwScale {min = 1.5, max = 4.5, talent = t, stat = 'str',} end,
-	speed_low = function(self, t) return self:wwScale {min = 0.1, max = 0.6, talent = t, stat = 'str',} end,
-	duration_high = function(self, t) return self:wwScale {min = 0.8, max = 2.3, talent = t, round = 'ceil',} end,
-	duration_low = function(self, t) return self:wwScale {min = 2, max = 4, talent = t, round = 'floor',} end,
-	evasion = function(self, t) return self:wwScale {min = 10, max = 35, stat = 'str',} end,
+	speed = function(self, t) return self:wwScale {min = 2, max = 6, talent = t, stat = 'str',} end,
+	duration = function(self, t) return self:wwScale {min = 0.8, max = 2.3, talent = t, round = 'ceil',} end,
+	evasion = function(self, t) return self:wwScale {min = 10, max = 40, stat = 'str',} end,
 	tactical = {ESCAPE = 2,},
 	on_learn = Talents.recalc_draconic_form,
 	on_unlearn = Talents.recalc_draconic_form,
 	action = function(self, t)
-		function run()
-			local duration = util.getval(t.duration_high, self, t)
+		local later = function()
+			local duration = util.getval(t.duration, self, t)
 			self:setEffect('EFF_WEIRD_LIGHTNING_SPEED', duration, {
-											 speed_high = util.getval(t.speed_high, self, t),
-											 speed_low = util.getval(t.speed_low, self, t),
-											 duration_low = util.getval(t.duration_low, self, t),
+											 speed = util.getval(t.speed, self, t),
 											 evasion = util.getval(t.evasion, self, t),})
 		end
-		game:onTickEnd(run)
+		game:onTickEnd(later)
 		return true
 	end,
 	info = function(self, t)
-		return ([[#38FF98#Speed up#LAST# gaining %d%% #SLATE#[str]#LAST# movement speed and %d%% #SLATE#[str]#LAST# evasion for %d turns. The first time you do something other than move, or when the effect is otherwise lost, you will gain a weaker version of the effect with only %d%% #SLATE#[str]#LAST# movement speed for another %d turns. This new effect will not be cancelled by actions other than movement.]])
-			:format(util.getval(t.speed_high, self, t) * 100,
+		return ([[#38FF98#Speed up#LAST# gaining %d%% #SLATE#[str]#LAST# movement speed and %d%% #SLATE#[str]#LAST# evasion for %d turns.]])
+			:format(util.getval(t.speed, self, t) * 100,
 							util.getval(t.evasion, self, t),
-							util.getval(t.duration_high, self, t),
-							util.getval(t.speed_low, self, t) * 100,
-							util.getval(t.duration_low, self ,t))
+							util.getval(t.duration, self, t))
 	end,}
 
 newTalent {
@@ -86,9 +80,8 @@ newTalent {
 	on_unlearn = Talents.recalc_draconic_form,
 	sustain_equilibrium = 20,
 	equilibrium_cost = function(self, t)
-		return self:wwScale {min = 2, max = 0.5, limit = 0.25, stat = 'str', round = 'ceil',}
+		return self:wwScale {min = 3.0, max = 1.0, limit = 0.4, talent = t, stat = 'str',}
 	end,
-	max_duration = function(self, t) return 10 end,
 	dodge_percent = function(self, t)
 		return self:wwScale {min = 0.2, max = 1.0, talent = t, stat = 'wil',}
 	end,
@@ -96,18 +89,43 @@ newTalent {
 		return self:wwScale {min = 1.4, max = 2.4, stat = 'wil', round = 'floor',}
 	end,
 	tactical = {BUFF = 2,},
-	callbackOnStatChange = function(self, t, stat, value)
-		if stat == self.STAT_WIL then self:updateTalentPassives(t) end
-	end,
-	activate = function(self, t) return {} end,
+	activate = function(self, t) return {moved = true,} end,
 	deactivate = function(self, t, p) return true end,
+	callbackOnMove = function(self, t, moved, force, ox, oy)
+		local p = self:isTalentActive(t.id)
+		if ox ~= self.x or oy ~= self.y then p.moved = true end
+	end,
+	callbackOnActBase = function(self, t)
+		local p = self:isTalentActive(t.id)
+		if p.damaged and not p.moved then
+			self:incEquilibrium(util.getval(t.equilibrium_cost, self, t))
+		end
+		p.moved = false
+		p.damaged = false
+	end,
+	damage_feedback = function(self, t, p, src, value)
+		if value > 0 then
+			p.damaged = true
+			local chance = util.getval(t.dodge_percent, self, t)
+			if rng.percent(chance * 100 * value / self.max_life) then
+				if self:equilibriumChance() then
+					local duration = util.getval(t.dodge_duration, self, t)
+					game:playSoundNear(self, 'talents/lightning')
+					-- On end of tick so it doesn't block this hit.
+					local later = function() self:setEffect('EFF_WEIRD_PURE_LIGHTNING', duration, {}) end
+					game:onTickEnd(later)
+				else
+					self:forceUseTalent('T_WEIRD_JITTER', {ignore_energy = true,})
+				end
+			end
+		end
+	end,
 	info = function(self, t)
-		return ([[This will passively enhance your #38FF98#Lightning Speed#LAST#. Whenever you take life damage, you have a chance equal to %.2f #SLATE#[wil]#LAST# times the percentage of max life you lost to turn into #ROYAL_BLUE#pure lightning#LAST# for %d #SLATE#[wil]#LAST# turns, completely dodging a single attack per turn by moving to an adjacent space.
-While active, whenever the slow part of your #38FF98#Lightning Speed#LAST# is up and you have moved during that game turn, your equilibrium will increase by %.2f #SLATE#[str]#LAST# and your #38FF98#Lightning Speed#LAST# will increase in duration by 1 (instead of decreasing), provided you pass an equilibrium check. This will not trigger if the duration is already at or above %d.]])
+		return ([[While active, whenever you take life damage, you have a chance equal to %.2f #SLATE#[wil]#LAST# times the percentage of max life you lost to turn into #ROYAL_BLUE#pure lightning#LAST# for %d #SLATE#[wil]#LAST# turns, completely dodging a single attack per turn by moving to an adjacent space. Trying to turn into #ROYAL_BLUE#pure lightning#LAST# will trigger an equilibrium check, deactivating this talent if you fail.
+This will increase your #6FFF83#equilibrium#LAST# by %.2f on any game turn in which you take damage and did not move.]])
 			:format(util.getval(t.dodge_percent, self, t),
 							util.getval(t.dodge_duration, self, t),
-							util.getval(t.equilibrium_cost, self, t),
-							util.getval(t.max_duration, self, t))
+							util.getval(t.equilibrium_cost, self, t))
 	end,}
 
 newTalent {
