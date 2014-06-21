@@ -14,13 +14,14 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-local hook = function(self, data)
-  local load_data = function(loader, name)
-    require(loader):loadDefinition('/data-grayswandir-weird-wyrmic/'..name..'.lua')
-  end
-  load_data('engine.interface.ActorTalents', 'talents')
-  load_data('engine.interface.ActorTemporaryEffects', 'effects')
-	load_data('engine.Birther', 'birth')
-  load_data('engine.DamageType', 'damage-types')
+local fireburn = DamageType.dam_def.FIREBURN.projector
+DamageType.dam_def.FIREBURN.projector = function(src, x, y, type, dam)
+	if src and src.inc_burn_damage then
+		if _G.type(dam) == 'table' then
+			dam.dam = dam.dam * (100 + src.inc_burn_damage) * 0.01
+		else
+			dam = dam * (100 + src.inc_burn_damage) * 0.01
+		end
+	end
+	return fireburn(src, x, y, type, dam)
 end
-class:bindHook('ToME:load', hook)

@@ -28,7 +28,7 @@ newEffect {
 								eff.bonuses.combat_physspeed * 100,
 								eff.bonuses.confusion_immune * 100)
 		end
-		return ([[Target is burning with rage, giving them %d extra #RED#fire burn#LAST# damage on melee hits but reducing sight radius by %d.%s]])
+		return ([[Target is burning with rage, giving them %d extra #LIGHT_RED#fire burn#LAST# damage on melee hits but reducing sight radius by %d.%s]])
 			:format(dd(eff.src, 'FIRE', eff.project),
 								-eff.sight,
 						 bonuses)

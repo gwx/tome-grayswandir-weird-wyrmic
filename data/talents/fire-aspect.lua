@@ -256,6 +256,8 @@ newTalent {
 		self:effectTemporaryValue(
 			p, 'inc_damage', {FIRE = util.getval(t.inc_damage, self, t),})
 		self:effectTemporaryValue(
+			p, 'inc_burn_damage', util.getval(t.inc_damage, self, t))
+		self:effectTemporaryValue(
 			p, 'resists_pen', {FIRE = util.getval(t.resists_pen, self, t),})
 	end,
 	callbackOnStatChange = function(self, t, stat, value)
@@ -264,10 +266,11 @@ newTalent {
 	activate = function(self, t) return {} end,
 	deactivate = function(self, t, p) return true end,
 	info = function(self, t)
-		return ([[You have mastered your ability to manipulate flame as a dragon would. You gain %d%% #SLATE#[wil]#LAST# to all #LIGHT_RED#fire#LAST# damage done, and %d%% #LIGHT_RED#fire#LAST# resistance piercing. You regain %.1f equilibrium on any turn in which you deal #LIGHT_RED#fire#LAST# damage.
+		return ([[You have mastered your ability to manipulate flame as a dragon would. You gain %d%% #SLATE#[wil]#LAST# to all #LIGHT_RED#fire#LAST# damage done, an additional #SLATE#(multiplicative)#LAST# %d%% #SLATE#[wil]#LAST# to all #LIGHT_RED#fire burn#LAST# damage done, and %d%% #LIGHT_RED#fire#LAST# resistance piercing. You regain %.1f equilibrium on any turn in which you deal #LIGHT_RED#fire#LAST# damage.
 This also reduces the cooldown of Raging Rush by %d.
 Points in this talent count double for the purposes of draconic form talents.]])
 			:format(util.getval(t.inc_damage, self, t),
+							util.getval(t.inc_damage, self, t),
 							util.getval(t.resists_pen, self, t),
 							util.getval(t.equilibrium_gain, self, t),
 							util.getval(t.cooldown_reduce, self, t))
