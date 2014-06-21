@@ -48,7 +48,7 @@ newTalent {
 	range = function(self, t) return self:wwScale {min = 3, max = 6, stat = 'str', round = 'floor',} end,
 	duration = function(self, t) return self:wwScale {min = 5, max = 9, stat = 'wil',} end,
 	project = function(self, t)
-		return self:wwScale {min = 5, max = 35, talent = t, stat = 'wil', scale = 'damage',}
+		return self:wwScale {min = 10, max = 50, talent = t, stat = 'wil', scale = 'damage',}
 	end,
 	sight = function(self, t) return -self:wwScale {min = 6, max = 3, stat = 'wil', round = 'floor',} end,
 	requires_target = true,
@@ -99,7 +99,7 @@ newTalent {
 	end,
 	info = function(self, t)
 		return ([[Rush forward in a #ORANGE#Burning Rage#LAST#, striking a target within %d #SLATE#[str]#LAST# spaces for %d%% weapon damage.
-This will last for %d #SLATE#[wil]#LAST# turns, giving you %d #SLATE#[wil]#LAST# extra #LIGHT_RED#fire#LAST# damage on melee attacks, but reducing your vision radius by %d #SLATE#[wil]#LAST#.]])
+This will last for %d #SLATE#[wil]#LAST# turns, giving you %d #SLATE#[wil]#LAST# extra #LIGHT_RED#fire burn#LAST# damage on melee attacks, but reducing your vision radius by %d #SLATE#[wil]#LAST#.]])
 			:format(util.getval(t.range, self, t),
 							util.getval(t.damage, self, t) * 100,
 							util.getval(t.duration, self, t),
@@ -108,9 +108,78 @@ This will last for %d #SLATE#[wil]#LAST# turns, giving you %d #SLATE#[wil]#LAST#
 	end,}
 
 newTalent {
-	name = 'Focused Fury', short_name = 'WEIRD_FOCUSED_FURY',
+	name = 'Fan the Flames', short_name = 'WEIRD_FAN_THE_FLAMES',
 	type = {'wild-gift/fire-aspect', 2,},
 	require = make_require(2),
+	points = 5,
+	equilibrium = 7,
+	tactical = {ATTACK = 2,},
+	range = 1,
+	cooldown = function(self, t)
+		return not self:hasEffect('EFF_WEIRD_BURNING_RAGE') and 10 or
+			util.getval(t.rage_cooldown, self, t)
+	end,
+	on_learn = Talents.recalc_draconic_form,
+	on_unlearn = Talents.recalc_draconic_form,
+	rage_cooldown = function(self, t)
+		return self:wwScale {min = 10, max = 4.5, limit = 2, talent = t, round = 'floor',}
+	end,
+	radius = function(self, t)
+		return self:wwScale {min = 1, max = 3, stat = 'str', round = 'floor',}
+	end,
+	damage = function(self, t)
+		return self:wwScale {min = 1.2, max = 2.0, talent = t,}
+	end,
+	duration = 5,
+	fire_mult = function(self, t)
+		return self:wwScale {min = 1.0, max = 1.7, stat = 'wil',}
+	end,
+	target = function(self, t)
+		return {type = 'hit', range = util.getval(t.range, self, t), talent = t,}
+	end,
+	action = function(self, t)
+		local tg = util.getval(t.target, self, t)
+		local x, y, actor = self:getTarget(tg)
+		if not x or not y or not actor then return end
+		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
+
+		local damage = util.getval(t.damage, self, t)
+		if self:attackTarget(actor, nil, damage, true) then
+			local burn = actor:hasEffect('EFF_BURNING')
+			if burn then
+				local power = burn.power * burn.dur
+				actor:removeEffect('EFF_BURNING')
+				damage_type:get('FIRE').projector(
+					self, actor.x, actor.y, 'FIRE', power)
+
+				local radius = util.getval(t.radius, self, t)
+				game.level.map:particleEmitter(actor.x, actor.y, radius + 2, 'ball_fire', {radius = radius + 2,})
+				game:playSoundNear(self, 'talents/fire')
+
+				local duration = util.getval(t.duration, self, t)
+				local effect = game.level.map:addEffect(
+					self, actor.x, actor.y, duration, 'FIRE', power / duration,
+					radius, 5, nil, {type = 'inferno',}, nil, 0, 0)
+				effect.name = ('%s\'s flames'):format(self.name:capitalize())
+			end
+		end
+
+		return true
+	end,
+	info = function(self, t)
+		return ([[Strike the target for %d%% weapon damage. If the target is currently burning, this will consume the flames on the target to deal %d%% #SLATE#[wil]#LAST# of the total damage instantly, and will leave flames on the ground in radius %d #SLATE#[str]#LAST# dealing the same amount of damage over %d turns.
+This talent only has a %d turn cooldown if used while in a #ORANGE#Burning Rage#LAST#.]])
+			:format(util.getval(t.damage, self, t) * 100,
+							util.getval(t.fire_mult, self, t) * 100,
+							util.getval(t.radius, self, t),
+							util.getval(t.duration, self, t),
+							util.getval(t.rage_cooldown, self, t))
+	end,}
+
+newTalent {
+	name = 'Focused Fury', short_name = 'WEIRD_FOCUSED_FURY',
+	type = {'wild-gift/fire-aspect', 3,},
+	require = make_require(3),
 	points = 5,
 	mode = 'sustained',
 	no_energy = true,
@@ -159,75 +228,6 @@ While active, on any turn on which you are raging and take damage totaling at le
 							util.getval(t.confusion_immune, self, t) * 100,
 							util.getval(t.life_percent, self, t) * 100,
 							util.getval(t.equilibrium_cost, self, t))
-	end,}
-
-newTalent {
-	name = 'Fan the Flames', short_name = 'WEIRD_FAN_THE_FLAMES',
-	type = {'wild-gift/fire-aspect', 3,},
-	require = make_require(3),
-	points = 5,
-	equilibrium = 7,
-	tactical = {ATTACK = 2,},
-	range = 1,
-	cooldown = function(self, t)
-		return not self:hasEffect('EFF_WEIRD_BURNING_RAGE') and 10 or
-			util.getval(t.rage_cooldown, self, t)
-	end,
-	on_learn = Talents.recalc_draconic_form,
-	on_unlearn = Talents.recalc_draconic_form,
-	rage_cooldown = function(self, t)
-		return self:wwScale {min = 10, max = 4.5, limit = 2, talent = t, round = 'floor',}
-	end,
-	radius = function(self, t)
-		return self:wwScale {min = 1, max = 3, stat = 'str', round = 'floor',}
-	end,
-	damage = function(self, t)
-		return self:wwScale {min = 1.2, max = 2.0, talent = t,}
-	end,
-	duration = 5,
-	fire_mult = function(self, t)
-		return self:wwScale {min = 1.0, max = 1.25, stat = 'wil',}
-	end,
-	target = function(self, t)
-		return {type = 'hit', range = util.getval(t.range, self, t), talent = t,}
-	end,
-	action = function(self, t)
-		local tg = util.getval(t.target, self, t)
-		local x, y, actor = self:getTarget(tg)
-		if not x or not y or not actor then return end
-		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
-
-		local damage = util.getval(t.damage, self, t)
-		if self:attackTarget(actor, nil, damage, true) then
-			local burn = actor:hasEffect('EFF_BURNING')
-			if burn then
-				local power = burn.power * burn.dur
-				actor:removeEffect('EFF_BURNING')
-				damage_type:get('FIRE').projector(
-					self, actor.x, actor.y, 'FIRE', power)
-
-				local radius = util.getval(t.radius, self, t)
-				game.level.map:particleEmitter(actor.x, actor.y, radius + 2, 'ball_fire', {radius = radius + 2,})
-				game:playSoundNear(self, 'talents/fire')
-
-				local duration = util.getval(t.duration, self, t)
-				local effect = game.level.map:addEffect(
-					self, actor.x, actor.y, duration, 'FIRE', power / duration,
-					radius, 5, nil, {type = 'inferno',}, nil, 0, 0)
-				effect.name = ('%s\'s flames'):format(self.name:capitalize())
-			end
-		end
-
-		return true
-	end,
-	info = function(self, t)
-		return ([[Strike the target for %d%% weapon damage. If the target is currently burning, this will consume the flames on the target to deal %d%% #SLATE#[wil]#LAST# of the total damage instantly, and will leave flames on the ground in radius %d #SLATE#[str]#LAST# dealing the same amount of damage over %d turns.
-This talent only has a %d turn cooldown if used while in a #ORANGE#Burning Rage#LAST#.]])
-			:format(util.getval(t.damage, self, t) * 100,
-							util.getval(t.fire_mult, self, t) * 100,
-							util.getval(t.radius, self, t),
-							util.getval(t.duration, self, t),
-							util.getval(t.rage_cooldown, self, t))
 	end,}
 
 newTalent {
@@ -321,9 +321,9 @@ newTalent {
 	radius = function(self, t) return self:wwScale {min = 2, max = 4, talent = t,} end,
 	damage = function(self, t)
 		return self:wwScale {
-			min = 10, max = 60, talent = t, stat = 'str', scale = 'damage',}
+			min = 15, max = 60, talent = t, stat = 'str', scale = 'damage',}
 	end,
-	duration = function(self, t) return self:wwScale {min = 2, max = 4, stat = 'str',} end,
+	duration = function(self, t) return self:wwScale {min = 4, max = 7, stat = 'str',} end,
 	intimidate = function(self, t) return self:wwScale {min = 5, max = 50, talent = t, stat = 'wil',} end,
 	intimidate_dur = function(self, t)
 		return self:wwScale {min = 3, max = 10, stat = 'wil', round = 'floor',}
@@ -343,7 +343,7 @@ newTalent {
 		local damage = util.getval(t.damage, self, t)
 		local duration = util.getval(t.duration, self, t)
 		local effect = game.level.map:addEffect(
-			self, self.x, self.y, duration, 'FIRE', damage,
+			self, self.x, self.y, duration, 'FIREBURN', damage,
 			radius, 5, nil, {type = 'inferno',}, nil, 0, 0)
 		effect.name = ('%s\'s flames'):format(self.name:capitalize())
 
@@ -367,7 +367,7 @@ newTalent {
 		return true
 	end,
 	info = function(self, t)
-		return ([[Set the ground around you alight in radius %d, dealing %d #SLATE#[str]#LAST# #LIGHT_RED#fire#LAST# damage for %d #SLATE#[str]#LAST# turns. Each enemy standing on one of these tiles will be intimidated #SLATE#[phys vs mind, checks (fear immunity + fire resistance)]#LAST#, losing %d #SLATE#[wil]#LAST# physical, spell, and mind power for %d #SLATE#[wil]#LAST# turns.]])
+		return ([[Set the ground around you alight in radius %d, dealing %d #SLATE#[str]#LAST# #LIGHT_RED#fire burn#LAST# damage for %d #SLATE#[str]#LAST# turns. Each enemy standing on one of these tiles will be intimidated #SLATE#[phys vs mind, checks (fear immunity + fire resistance)]#LAST#, losing %d #SLATE#[wil]#LAST# physical, spell, and mind power for %d #SLATE#[wil]#LAST# turns.]])
 			:format(util.getval(t.radius, self, t),
 							dd(self, 'FIRE', util.getval(t.damage, self, t)),
 							util.getval(t.duration, self, t),
@@ -393,9 +393,9 @@ newTalent {
 	end,
 	ground_damage = function(self, t)
 		return self:wwScale {
-			min = 20, max = 120, talent = t, stat = 'str', scale = 'damage',}
+			min = 20, max = 90, talent = t, stat = 'str', scale = 'damage',}
 	end,
-	duration = function(self, t) return self:wwScale {min = 3, max = 7, stat = 'str',} end,
+	duration = function(self, t) return self:wwScale {min = 8, max = 12, stat = 'str',} end,
 	target = function(self, t)
 		return {type = 'cone', talent = t, selffire = false,
 						range = util.getval(t.range, self, t),

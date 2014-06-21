@@ -28,7 +28,7 @@ newEffect {
 								eff.bonuses.combat_physspeed * 100,
 								eff.bonuses.confusion_immune * 100)
 		end
-		return ([[Target is burning with rage, giving them %d extra #RED#fire#LAST# damage on melee hits but reducing sight radius by %d.%s]])
+		return ([[Target is burning with rage, giving them %d extra #RED#fire burn#LAST# damage on melee hits but reducing sight radius by %d.%s]])
 			:format(dd(eff.src, 'FIRE', eff.project),
 								-eff.sight,
 						 bonuses)
@@ -45,7 +45,7 @@ newEffect {
 	end,
 	activate = function(self, eff)
 		self:effectTemporaryValue(eff, 'sight', eff.sight)
-		self:effectTemporaryValue(eff, 'melee_project', {FIRE = eff.project,})
+		self:effectTemporaryValue(eff, 'melee_project', {FIREBURN = eff.project,})
 		self.bonuses = {}
 		for stat, amount in pairs(self.burning_rage_bonuses or {}) do
 			self.bonuses.stat = amount
