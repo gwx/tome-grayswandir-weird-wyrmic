@@ -69,9 +69,56 @@ newTalent {
 	end,}
 
 newTalent {
-	name = 'Jitter', short_name = 'WEIRD_JITTER',
+	name = 'Rapid Strikes', short_name = 'WEIRD_RAPID_STRIKES',
 	type = {'wild-gift/storm-aspect', 2,},
 	require = make_require(2),
+	points = 5,
+	equilibrium = 7,
+	range = 1,
+	cooldown = function(self, t)
+		return self:wwScale {min = 8, max = 5, limit = 3, talent = t, round = 'ceil',}
+	end,
+	damage = function(self, t)
+		return self:wwScale {min = 1, max = 1.4, talent = t,}
+	end,
+	project = function(self, t)
+		return self:wwScale {min = 5, max = 35, talent = t, stat = 'wil', scale = 'damage',}
+	end,
+	speed = function(self, t)
+		return self:wwScale {min = 0.1, max = 0.35, talent = t,}
+	end,
+	tactical = {ATTACK = 1,},
+	target = function(self, t)
+		return {type = 'hit', talent = t, range = util.getval(t.range, self, t),}
+	end,
+	on_learn = Talents.recalc_draconic_form,
+	on_unlearn = Talents.recalc_draconic_form,
+	action = function(self, t)
+		local tg = util.getval(t.target, self, t)
+		local x, y, actor = self:getTarget(tg)
+		if not x or not y or not actor then return end
+		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
+
+		local damage = util.getval(t.damage, self, t)
+		if self:attackTarget(actor, nil, damage, true) then
+			self:setEffect('EFF_WEIRD_RAPID_STRIKES', 1, {
+											 target = actor,
+											 speed = util.getval(t.speed, self, t),
+											 project = util.getval(t.project, self, t),})
+		end
+		return true
+	end,
+	info = function(self, t)
+		return ([[Hit an adjacent target with your weapon for %d%% damage. If this hits, you will gain %d #SLATE#[wil]#LAST# #ROYAL_BLUE#lightning#LAST# damage on hit and %d%% combat speed. You will lose this bonus when you take an action that does not result in the original target taking #ROYAL_BLUE#lightning#LAST# damage.]])
+			:format(util.getval(t.damage, self, t) * 100,
+							dd(self, 'LIGHTNING', util.getval(t.project, self, t)),
+							util.getval(t.speed, self, t) * 100)
+	end,}
+
+newTalent {
+	name = 'Jitter', short_name = 'WEIRD_JITTER',
+	type = {'wild-gift/storm-aspect', 3,},
+	require = make_require(3),
 	points = 5,
 	mode = 'sustained',
 	no_energy = true,
@@ -83,7 +130,7 @@ newTalent {
 		return self:wwScale {min = 3.0, max = 1.0, limit = 0.4, talent = t, stat = 'str',}
 	end,
 	dodge_percent = function(self, t)
-		return self:wwScale {min = 0.2, max = 1.0, talent = t, stat = 'wil',}
+		return self:wwScale {min = 0.3, max = 1.2, talent = t, stat = 'wil',}
 	end,
 	dodge_duration = function(self, t)
 		return self:wwScale {min = 1.4, max = 2.4, stat = 'wil', round = 'floor',}
@@ -126,53 +173,6 @@ This will increase your #6FFF83#equilibrium#LAST# by %.2f on any game turn in wh
 			:format(util.getval(t.dodge_percent, self, t),
 							util.getval(t.dodge_duration, self, t),
 							util.getval(t.equilibrium_cost, self, t))
-	end,}
-
-newTalent {
-	name = 'Rapid Strikes', short_name = 'WEIRD_RAPID_STRIKES',
-	type = {'wild-gift/storm-aspect', 3,},
-	require = make_require(3),
-	points = 5,
-	equilibrium = 7,
-	range = 1,
-	cooldown = function(self, t)
-		return self:wwScale {min = 8, max = 5, limit = 3, talent = t, round = 'ceil',}
-	end,
-	damage = function(self, t)
-		return self:wwScale {min = 1, max = 1.4, talent = t,}
-	end,
-	project = function(self, t)
-		return self:wwScale {min = 5, max = 35, talent = t, stat = 'wil', scale = 'damage',}
-	end,
-	speed = function(self, t)
-		return self:wwScale {min = 0.1, max = 0.35, talent = t,}
-	end,
-	tactical = {ATTACK = 1,},
-	target = function(self, t)
-		return {type = 'hit', talent = t, range = util.getval(t.range, self, t),}
-	end,
-	on_learn = Talents.recalc_draconic_form,
-	on_unlearn = Talents.recalc_draconic_form,
-	action = function(self, t)
-		local tg = util.getval(t.target, self, t)
-		local x, y, actor = self:getTarget(tg)
-		if not x or not y or not actor then return end
-		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
-
-		local damage = util.getval(t.damage, self, t)
-		if self:attackTarget(actor, nil, damage, true) then
-			self:setEffect('EFF_WEIRD_RAPID_STRIKES', 1, {
-											 target = actor,
-											 speed = util.getval(t.speed, self, t),
-											 project = util.getval(t.project, self, t),})
-		end
-		return true
-	end,
-	info = function(self, t)
-		return ([[Hit an adjacent target with your weapon for %d%% damage. If this hits, you will gain %d #SLATE#[wil]#LAST# #ROYAL_BLUE#lightning#LAST# damage on hit and %d%% combat speed. You will lose this bonus when you take an action that does not result in the original target taking #ROYAL_BLUE#lightning#LAST# damage.]])
-			:format(util.getval(t.damage, self, t) * 100,
-							dd(self, 'LIGHTNING', util.getval(t.project, self, t)),
-							util.getval(t.speed, self, t) * 100)
 	end,}
 
 newTalent {
