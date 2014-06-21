@@ -107,9 +107,72 @@ newTalent {
 	end,}
 
 newTalent {
-	name = 'Rigid Body', short_name = 'WEIRD_RIGID_BODY',
+	name = 'Shattering Smash', short_name = 'WEIRD_SHATTERING_SMASH',
 	type = {'wild-gift/ice-aspect', 2,},
 	require = make_require(2),
+	points = 5,
+	equilibrium = 8,
+	range = 1,
+	cooldown = function(self, t)
+		return self:wwScale {min = 9, max = 7, limit = 5, talent = t,}
+	end,
+	damage = function(self, t) return self:wwScale {min = 1.2, max = 1.8, talent = t,} end,
+	shatter = function(self, t) return self:wwScale {min = 1.9, max = 3.4, talent = t,} end,
+	knockback = function(self, t) return self:wwScale {min = 2, max = 9, stat = 'str',} end,
+	wet = function(self, t) return self:wwScale {min = 2, max = 5, stat = 'wil',} end,
+	tactical = {ATTACKAREA = 2, KNOCKBACK = 1,},
+	target = function(self, t)
+		return {type = 'hit', talent = t, range = util.getval(t.range, self, t),}
+	end,
+	on_learn = Talents.recalc_draconic_form,
+	on_unlearn = Talents.recalc_draconic_form,
+	action = function(self, t)
+		local tg = util.getval(t.target, self, t)
+		local x, y, actor = self:getTarget(tg)
+		if not x or not y or not actor then return end
+		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
+
+		if actor:attr('frozen') then
+			if actor:hasEffect('EFF_FROZEN') then
+				actor:removeEffect('EFF_FROZEN', true, true)
+			elseif actor:hasEffect('EFF_FROZEN_FEET') then
+				actor:removeEffect('EFF_FROZEN_FEET', true, true)
+			end
+			local damage = util.getval(t.shatter, self, t)
+			if self:attackTarget(actor, nil, damage, true) then
+				game.logSeen(self, '%s shatters the frozen %s!', self.name:capitalize(), actor.name)
+				actor:setEffect('EFF_WET', util.getval(t.wet, self, t), {})
+			end
+		else
+			local damage = util.getval(t.damage, self, t)
+			if self:attackTarget(actor, nil, damage, true) then
+				game.logSeen(self, '%s tries to #LIGHT_UMBER#knock back#LAST# %s!', self.name:capitalize(), actor.name)
+				if actor:canBe 'knockback' and
+					self:checkHit(self:combatPhysicalpower(), actor:combatPhysicalResist())
+				then
+					actor:knockback(self.x, self.y, util.getval(t.knockback, self, t))
+					game.logSeen(self, '%s is #LIGHT_UMBER#knocked back#LAST#!', actor.name:capitalize())
+				else
+					game.logSeen(self, '%s resists the #LIGHT_UMBER#knock back#LAST#!', actor.name:capitalize())
+				end
+			end
+		end
+		game:playSoundNear(self, 'talents/ice')
+
+		return true
+	end,
+	info = function(self, t)
+		return ([[Hit an adjacent enemy with your weapon for %d%% damage and #LIGHT_UMBER#knocking it back#LAST# #SLATE#[phys vs phys, knockback]#LAST# %d #SLATE#[str]#LAST# tiles. If the target is #LIGHT_BLUE#frozen#LAST# or has #LIGHT_BLUE#frozen feet#LAST#, instead remove that effect, hit for %d%% weapon damage and inflict the #BLUE#wet#LAST# condition for %d #SLATE#[wil]#LAST# turns.]])
+			:format(util.getval(t.damage, self, t) * 100,
+							util.getval(t.knockback, self, t),
+							util.getval(t.shatter, self, t) * 100,
+							util.getval(t.wet, self, t))
+	end,}
+
+newTalent {
+	name = 'Rigid Body', short_name = 'WEIRD_RIGID_BODY',
+	type = {'wild-gift/ice-aspect', 3,},
+	require = make_require(3),
 	points = 5,
 	mode = 'sustained',
 	no_energy = true,
@@ -149,64 +212,6 @@ While active, whenever your #LIGHT_BLUE#Frozen Armour#LAST# is up and you have n
 							util.getval(t.combat_def, self, t),
 							util.getval(t.retaliation_percent, self, t),
 							util.getval(t.equilibrium_cost, self, t))
-	end,}
-
-newTalent {
-	name = 'Shattering Smash', short_name = 'WEIRD_SHATTERING_SMASH',
-	type = {'wild-gift/ice-aspect', 3,},
-	require = make_require(3),
-	points = 5,
-	equilibrium = 8,
-	range = 1,
-	cooldown = function(self, t)
-		return self:wwScale {min = 9, max = 7, limit = 5, talent = t,}
-	end,
-	damage = function(self, t) return self:wwScale {min = 1.2, max = 1.8, talent = t,} end,
-	shatter = function(self, t) return self:wwScale {min = 1.9, max = 3.4, talent = t,} end,
-	knockback = function(self, t) return self:wwScale {min = 2, max = 9, stat = 'str',} end,
-	wet = function(self, t) return self:wwScale {min = 2, max = 5, stat = 'wil',} end,
-	tactical = {ATTACKAREA = 2, KNOCKBACK = 1,},
-	target = function(self, t)
-		return {type = 'hit', talent = t, range = util.getval(t.range, self, t),}
-	end,
-	on_learn = Talents.recalc_draconic_form,
-	on_unlearn = Talents.recalc_draconic_form,
-	action = function(self, t)
-		local tg = util.getval(t.target, self, t)
-		local x, y, actor = self:getTarget(tg)
-		if not x or not y or not actor then return end
-		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
-
-		if actor:attr('frozen') then
-			local damage = util.getval(t.shatter, self, t)
-			if self:attackTarget(actor, nil, damage, true) then
-				game.logSeen(self, '%s shatters the frozen %s!', self.name:capitalize(), actor.name)
-				actor:setEffect('EFF_WET', util.getval(t.wet, self, t), {})
-			end
-		else
-			local damage = util.getval(t.damage, self, t)
-			if self:attackTarget(actor, nil, damage, true) then
-				game.logSeen(self, '%s tries to #LIGHT_UMBER#knock back#LAST# %s!', self.name:capitalize(), actor.name)
-				if actor:canBe 'knockback' and
-					self:checkHit(self:combatPhysicalpower(), actor:combatPhysicalResist())
-				then
-					actor:knockback(self.x, self.y, util.getval(t.knockback, self, t))
-					game.logSeen(self, '%s is #LIGHT_UMBER#knocked back#LAST#!', actor.name:capitalize())
-				else
-					game.logSeen(self, '%s resists the #LIGHT_UMBER#knock back#LAST#!', actor.name:capitalize())
-				end
-			end
-		end
-		game:playSoundNear(self, 'talents/ice')
-
-		return true
-	end,
-	info = function(self, t)
-		return ([[Hit an adjacent enemy with your weapon for %d%% damage and #LIGHT_UMBER#knocking it back#LAST# #SLATE#[phys vs phys, knockback]#LAST# %d #SLATE#[str]#LAST# tiles. If the target is #LIGHT_BLUE#frozen#LAST# in place, instead hit for %d%% weapon damage and inflict the #BLUE#wet#LAST# condition for %d #SLATE#[wil]#LAST# turns.]])
-			:format(util.getval(t.damage, self, t) * 100,
-							util.getval(t.knockback, self, t),
-							util.getval(t.shatter, self, t) * 100,
-							util.getval(t.wet, self, t))
 	end,}
 
 newTalent {
