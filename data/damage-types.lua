@@ -25,3 +25,19 @@ DamageType.dam_def.FIREBURN.projector = function(src, x, y, type, dam)
 	end
 	return fireburn(src, x, y, type, dam)
 end
+
+local lightning = DamageType.dam_def.LIGHTNING.projector
+DamageType.dam_def.LIGHTNING.projector = function(src, x, y, type, dam)
+	if src and src.weird_lightning_daze and src.weird_lightning_daze > 0 then
+		local map = require 'engine.Map'
+		local actor = game.level.map(x, y, map.ACTOR)
+		if actor and actor:canBe('stun') then
+			local effect = {src = src,}
+			if src.combatMindpower then
+				effect.apply_power = src:combatMindpower()
+			end
+			actor:setEffect('EFF_DAZED', src.weird_lightning_daze, effect)
+		end
+	end
+	return lightning(src, x, y, type, dam)
+end

@@ -189,14 +189,19 @@ newEffect {
 	name = 'WEIRD_LIGHTNING_SPEED', image = 'talents/weird_lightning_speed.png',
 	desc = 'Lightning Speed',
 	long_desc = function(self, eff)
-		return ([[Target is moving incredibly quickly, giving them %d%% extra movement speed and %d%% evasion chance.
+		local daze = ''
+		if eff.daze > 0 then
+			daze = ('\nAll #ROYAL_BLUE#lightning#LAST# damage you do will #VIOLET#daze#LAST# #SLATE#[mind vs. phys, stun]#LAST# for %d turns.')
+				:format(eff.daze)
+		end
+		return ([[Target is moving incredibly quickly, giving them %d%% extra movement speed and %d%% evasion chance.%s
 Any action other than movement will break this effect.]])
-			:format(eff.speed * 100, eff.evasion)
+			:format(eff.speed * 100, eff.evasion, daze)
 	end,
 	type = 'physical',
 	subtype = {speed = true, lightning = true, nature = true,},
 	status = 'beneficial',
-	parameters = {speed = 1, evasion = 30,},
+	parameters = {speed = 1, evasion = 30, daze = 0,},
 	on_gain = function(self, eff)
 		return '#Target# speeds up!', '+Lightning Speed'
 	end,
@@ -207,6 +212,7 @@ Any action other than movement will break this effect.]])
 		self:effectTemporaryValue(eff, 'lightning_speed', 1)
 		self:effectTemporaryValue(eff, 'movement_speed', eff.speed)
 		self:effectTemporaryValue(eff, 'evasion', eff.evasion)
+		self:effectTemporaryValue(eff, 'weird_lightning_daze', eff.daze)
 	end,}
 
 newEffect {

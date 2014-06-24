@@ -45,18 +45,23 @@ newTalent {
 		end
 		return cd
 	end,
-	speed = function(self, t) return self:wwScale {min = 2, max = 6, talent = t, stat = 'str',} end,
-	duration = function(self, t) return self:wwScale {min = 0.8, max = 2.3, talent = t, round = 'ceil',} end,
-	evasion = function(self, t) return self:wwScale {min = 10, max = 40, stat = 'str',} end,
+	speed = function(self, t) return self:scale {low = 2, high = 6, t, 'str',} end,
+	duration = function(self, t) return self:scale {low = 0.8, high = 2.3, t, after = 'ceil',} end,
+	evasion = function(self, t) return self:scale {low = 10, high = 40, 'str',} end,
 	tactical = {ESCAPE = 2,},
 	on_learn = Talents.recalc_draconic_form,
 	on_unlearn = Talents.recalc_draconic_form,
 	action = function(self, t)
 		local later = function()
 			local duration = util.getval(t.duration, self, t)
+			local daze = 0
+			if self:knowTalent('T_WEIRD_STORM_ASPECT') then
+				daze = self:callTalent('T_WEIRD_STORM_ASPECT', 'daze_duration')
+			end
 			self:setEffect('EFF_WEIRD_LIGHTNING_SPEED', duration, {
 											 speed = util.getval(t.speed, self, t),
-											 evasion = util.getval(t.evasion, self, t),})
+											 evasion = util.getval(t.evasion, self, t),
+											 daze = daze,})
 		end
 		game:onTickEnd(later)
 		return true
@@ -76,16 +81,16 @@ newTalent {
 	equilibrium = 7,
 	range = 1,
 	cooldown = function(self, t)
-		return self:wwScale {min = 8, max = 5, limit = 3, talent = t, round = 'ceil',}
+		return self:scale {low = 8, high = 5, limit = 3, t, after = 'ceil',}
 	end,
 	damage = function(self, t)
-		return self:wwScale {min = 1, max = 1.4, talent = t,}
+		return self:scale {low = 1, high = 1.4, t,}
 	end,
 	project = function(self, t)
-		return self:wwScale {min = 5, max = 35, talent = t, stat = 'wil', scale = 'damage',}
+		return self:scale {low = 5, high = 35, t, 'wil', after = 'damage',}
 	end,
 	speed = function(self, t)
-		return self:wwScale {min = 0.1, max = 0.35, talent = t,}
+		return self:scale {low = 0.1, high = 0.35, t,}
 	end,
 	tactical = {ATTACK = 1,},
 	target = function(self, t)
@@ -127,13 +132,13 @@ newTalent {
 	on_unlearn = Talents.recalc_draconic_form,
 	sustain_equilibrium = 20,
 	equilibrium_cost = function(self, t)
-		return self:wwScale {min = 3.0, max = 1.0, limit = 0.4, talent = t, stat = 'str',}
+		return self:scale {low = 3.0, high = 1.0, limit = 0.4, t, 'str',}
 	end,
 	dodge_percent = function(self, t)
-		return self:wwScale {min = 0.3, max = 1.2, talent = t, stat = 'wil',}
+		return self:scale {low = 0.3, high = 1.2, t, 'wil',}
 	end,
 	dodge_duration = function(self, t)
-		return self:wwScale {min = 1.4, max = 2.4, stat = 'wil', round = 'floor',}
+		return self:scale {low = 1.4, high = 2.4, 'wil',}
 	end,
 	tactical = {BUFF = 2,},
 	activate = function(self, t) return {moved = true,} end,
@@ -156,7 +161,7 @@ newTalent {
 			local chance = util.getval(t.dodge_percent, self, t)
 			if rng.percent(chance * 100 * value / self.max_life) then
 				if self:equilibriumChance() then
-					local duration = util.getval(t.dodge_duration, self, t)
+					local duration = self:mindCrit(util.getval(t.dodge_duration, self, t))
 					game:playSoundNear(self, 'talents/lightning')
 					-- On end of tick so it doesn't block this hit.
 					local later = function() self:setEffect('EFF_WEIRD_PURE_LIGHTNING', duration, {}) end
@@ -168,10 +173,10 @@ newTalent {
 		end
 	end,
 	info = function(self, t)
-		return ([[While active, whenever you take life damage, you have a chance equal to %.2f #SLATE#[wil]#LAST# times the percentage of max life you lost to turn into #ROYAL_BLUE#pure lightning#LAST# for %d #SLATE#[wil]#LAST# turns, completely dodging a single attack per turn by moving to an adjacent space. Trying to turn into #ROYAL_BLUE#pure lightning#LAST# will trigger an equilibrium check, deactivating this talent if you fail.
+		return ([[While active, whenever you take life damage, you have a chance equal to %.2f #SLATE#[wil]#LAST# times the percentage of max life you lost to turn into #ROYAL_BLUE#pure lightning#LAST# for %d #SLATE#[wil, mind crit]#LAST# turns, completely dodging a single attack per turn by moving to an adjacent space. Trying to turn into #ROYAL_BLUE#pure lightning#LAST# will trigger an equilibrium check, deactivating this talent if you fail.
 This will increase your #6FFF83#equilibrium#LAST# by %.2f on any game turn in which you take damage and did not move.]])
 			:format(util.getval(t.dodge_percent, self, t),
-							util.getval(t.dodge_duration, self, t),
+							math.floor(util.getval(t.dodge_duration, self, t)),
 							util.getval(t.equilibrium_cost, self, t))
 	end,}
 
@@ -184,16 +189,19 @@ newTalent {
 	on_learn = Talents.recalc_draconic_form,
 	on_unlearn = Talents.recalc_draconic_form,
 	inc_damage = function(self, t)
-		return self:wwScale {min = 5, max = 35, talent = t, stat = 'wil',}
+		return self:scale {low = 5, high = 35, t, 'wil',}
 	end,
 	resists_pen = function(self, t)
-		return self:wwScale {min = 3, max = 10, talent = t,}
+		return self:scale {low = 3, high = 10, t,}
 	end,
 	equilibrium_gain = function(self, t)
-		return self:wwScale {min = 0.2, max = 2, talent = t,}
+		return self:scale {low = 0.2, high = 2, t,}
 	end,
 	cooldown_reduce = function(self, t)
-		return self:wwScale {min = 1, max = 6, talent = t, round = 'floor',}
+		return self:scale {low = 1, high = 6, t, after = 'floor',}
+	end,
+	daze_duration = function(self, t)
+		return self:scale {low = 0, high = 3, limit = 5, t, after = 'floor',}
 	end,
 	passives = function(self, t, p)
 		self:effectTemporaryValue(
@@ -210,12 +218,13 @@ newTalent {
 	deactivate = function(self, t, p) return true end,
 	info = function(self, t)
 		return ([[You have mastered your ability to manipulate lightning as a dragon would. You gain %d%% #SLATE#[wil]#LAST# to all #ROYAL_BLUE#lightning#LAST# damage done, and %d%% #ROYAL_BLUE#lightning#LAST# resistance piercing. You regain %.1f equilibrium on any turn in which you deal #ROYAL_BLUE#lightning#LAST# damage.
-This also reduces the cooldown of #38FF98#Lightning Speed#LAST# by %d.
+This reduces the cooldown of #38FF98#Lightning Speed#LAST# by %d. While #38FF98#Lightning Speed#LAST# is active, all #ROYAL_BLUE#lightning#LAST# damage you do will #VIOLET#daze#LAST# #SLATE#[mind vs. phys, stun]#LAST# for %d turns.
 Points in this talent count double for the purposes of draconic form talents.]])
 			:format(util.getval(t.inc_damage, self, t),
 							util.getval(t.resists_pen, self, t),
 							util.getval(t.equilibrium_gain, self, t),
-							util.getval(t.cooldown_reduce, self, t))
+							util.getval(t.cooldown_reduce, self, t),
+							util.getval(t.daze_duration, self, t))
 	end,}
 
 newTalent {
@@ -226,9 +235,8 @@ newTalent {
 	cooldown = function(self, t)
 		return self:callTalent('T_WEIRD_DRACONIC_CLAW', 'shared_cooldown')
 	end,
-	damage = function(self, t) return self:wwScale {min = 1.0, max = 1.8, talent = t,} end,
-	duration = function(self, t) return self:wwScale {min = 2, max = 5, talent = t, round = 'floor',} end,
-	requires_target = true,
+	damage = function(self, t) return self:scale {low = 1.0, high = 1.8, t,} end,
+	duration = function(self, t) return self:scale {low = 2, high = 5, t, after = 'floor',} end,
 	tactical = {ATTACK = 2,},
 	requires_target = true,
 	range = 1,
@@ -270,12 +278,11 @@ newTalent {
 	end,
 	tactical = {ATTACKAREA = 2,},
 	range = 0,
-	radius = function(self, t) return self:wwScale {min = 2, max = 4, talent = t,} end,
+	radius = function(self, t) return self:scale {low = 2, high = 4, t,} end,
 	damage = function(self, t)
-		return self:wwScale {
-			min = 30, max = 300, talent = t, power = 'mind', scale = 'damage',}
+		return self:scale {low = 30, high = 300, t, 'mind', after = 'damage',}
 	end,
-	duration = function(self, t) return self:wwScale {min = 2, max = 7, talent = t, round = 'floor',} end,
+	duration = function(self, t) return self:scale {low = 2, high = 7, t, after = 'floor',} end,
 	target = function(self, t)
 		return {type = 'ball', talent = t, selffire = false, friendlyfire = false,
 						range = util.getval(t.range, self, t),
@@ -324,16 +331,17 @@ newTalent {
 	tactical = {ATTACKAREA = 2,},
 	range = 0,
 	direct_hit = true,
-	radius = function(self, t) return self:wwScale {min = 5, max = 9, talent = t,} end,
+	radius = function(self, t) return self:scale {low = 5, high = 9, t,} end,
 	damage = function(self, t)
-		return self:wwScale {
-			min = 40, max = 400, talent = t, stat = 'str', scale = 'damage',}
+		return self:scale {low = 45, high = 450, t, 'str', after = 'damage',}
 	end,
 	ground_damage = function(self, t)
-		return self:wwScale {
-			min = 20, max = 120, talent = t, stat = 'str', scale = 'damage',}
+		return self:scale {low = 20, high = 120, t, 'str', after = 'damage',}
 	end,
-	duration = function(self, t) return self:wwScale {min = 3, max = 7, stat = 'str',} end,
+	overkill = function(self, t)
+		return self:scale {low = 40, high = 90, 'wil',}
+	end,
+	duration = function(self, t) return self:scale {low = 3, high = 7, 'str',} end,
 	target = function(self, t)
 		return {type = 'cone', talent = t, selffire = false,
 						range = util.getval(t.range, self, t),
@@ -344,28 +352,38 @@ newTalent {
 		local x, y = self:getTarget(tg)
 		if not x or not y then return end
 
-		local damage = self:mindCrit(util.getval(t.damage, self, t))
-		local duration = util.getval(t.duration, self, t)
-		local ground_damage = util.getval(t.duration, self, t)
-		local kills = 0
+		-- grab targets
+		local actors = {}
 		local projector = function(x, y, tg, self)
 			local actor = game.level.map(x, y, map.ACTOR)
 			if not actor or actor.dead then return end
-
-			local real_damage = damage * (1 + actor.life / actor.max_life)
-			damage_type:get('LIGHTNING').projector(self, x, y, 'LIGHTNING', real_damage)
-
-			if actor.dead then kills = kills + 1 end
+			table.insert(actors, actor)
 		end
 		self:project(tg, x, y, projector)
 
-		local speed = self:hasEffect('EFF_WEIRD_LIGHTNING_SPEED')
-		if speed and kills > 0 then
-			if speed.is_low then
-				speed.dur = speed.dur + kills
-			else
-				speed.duration_low = speed.duration_low + kills
+		local lightning = damage_type:get('LIGHTNING').projector
+		local damage = self:mindCrit(util.getval(t.damage, self, t))
+		local overkill_mult = util.getval(t.overkill, self, t) * 0.01
+		local kills = 0
+		while damage > 0 and #actors > 0 do
+			local overkill = 0
+			local to_del = {}
+			for i, actor in pairs(actors) do
+				lightning(self, actor.x, actor.y, 'LIGHTNING', damage)
+				if actor.dead then
+					kills = kills + 1
+					overkill = overkill + actor.die_at - actor.life
+					table.insert(to_del, i)
+				end
 			end
+			for i = #to_del, 1, -1 do
+				table.remove(actors, to_del[i])
+			end
+			damage = overkill * overkill_mult / #actors
+		end
+
+		if kills > 0 and self:isTalentCoolingDown('T_WEIRD_LIGHTNING_SPEED') then
+			self:alterTalentCoolingdown('T_WEIRD_LIGHTNING_SPEED', -kills)
 		end
 
 		game.level.map:particleEmitter(self.x, self.y, tg.radius, 'breath_lightning', {
@@ -384,8 +402,9 @@ newTalent {
 		return true
 	end,
 	info = function(self, t)
-		return ([[Breathe lightning at your foes, doing %d #SLATE#[str]#LAST# #ROYAL_BLUE#lightning#LAST# damage #SLATE#[mind crit]#LAST# in a radius %d cone. Damage will be increased by the target's percentage of life remaining. #SLATE#(So a target at full health takes double damage.)#LAST#
-Every enemy killed in the initial blast will raise your #38FF98#Lightning Speed#LAST# duration by 1, if you have it. This applies to the second part of the effect, even if you currently have the first part active.]])
+		return ([[Breathe lightning at your foes, doing %d #SLATE#[str]#LAST# #ROYAL_BLUE#lightning#LAST# damage #SLATE#[mind crit]#LAST# in a radius %d cone. %d%% #SLATE#[wil]#LAST# of any overkill will be redistributed among the remaining targets.
+Every enemy killed in the initial blast will reduce your #38FF98#Lightning Speed#LAST# cooldown by 1.]])
 			:format(dd(self, 'LIGHTNING', util.getval(t.damage, self, t)),
-							util.getval(t.radius, self, t))
+							util.getval(t.radius, self, t),
+							util.getval(t.overkill, self, t))
 	end,}
