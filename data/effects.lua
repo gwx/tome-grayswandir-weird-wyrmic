@@ -16,6 +16,7 @@
 
 local talents = require 'engine.interface.ActorTalents'
 local dd = talents.damDesc
+local particles = require 'engine.Particles'
 
 newEffect {
 	name = 'WEIRD_BURNING_RAGE', image = 'talents/weird_raging_rush.png',
@@ -333,4 +334,51 @@ newEffect {
 		new.stacks = old.stacks + new.stacks
 		self.tempeffect_def.EFF_WEIRD_SWALLOW.activate(self, new)
 		return new
+	end,}
+
+newEffect {
+	name = 'WEIRD_SAND_BARRIER', image = 'talents/weird_sandblaster.png',
+	desc = 'Sand Barrier',
+	long_desc = function(self, eff)
+		return ([[Target gains %d defense and %d%% physical resistance.]])
+			:format(eff.defense, eff.resist)
+	end,
+	type = 'physical',
+	subtype = {nature = true, earth = true,},
+	status = 'beneficial',
+	parameters = {defense = 10, resist = 10,},
+	activate = function(self, eff)
+		self:effectTemporaryValue(eff, 'combat_def', eff.defense)
+		self:effectTemporaryValue(eff, 'resists', {PHYSICAL = eff.resist,})
+		eff.particle = self:addParticles(particles.new('sandy_shield', 1))
+	end,
+	deactivate = function(self, eff)
+		self:removeParticles(eff.particle)
+	end,}
+
+newEffect {
+	name = 'WEIRD_PARTIALLY_BLINDED',
+	desc = 'Partially Blinded',
+	long_desc = function(self, eff)
+		return ([[Target is #GREY#partially blinded#LAST#, reducing accuracy by %d.]])
+			:format(eff.accuracy)
+	end,
+	type = 'physical',
+	subtype = {earth = true, blind = true,},
+	status = 'detrimental',
+	parameters = {accuracy = 10,},
+	on_gain = function(self, eff)
+		return '#Target# is #GREY#Partially Blinded#LAST#!', '+Partially Blinded'
+	end,
+	on_lose = function(self, eff)
+		return '#Target# is no longer #GRE#Partially Blinded#LAST#.', '-Partially Blinded'
+	end,
+	activate = function(self, eff)
+		local immune = self.blind_immune or 0
+		if immune >= 1 then
+			self:removeEffect('EFF_WEIRD_PARTIALLY_BLINDED')
+			return
+		end
+
+		self:effectTemporaryValue(eff, 'combat_atk', -eff.accuracy * (1 - immune))
 	end,}
