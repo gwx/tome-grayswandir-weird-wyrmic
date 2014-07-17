@@ -41,3 +41,18 @@ DamageType.dam_def.LIGHTNING.projector = function(src, x, y, type, dam)
 	end
 	return lightning(src, x, y, type, dam)
 end
+
+newDamageType {
+	name = 'burrow', type = 'WEIRD_BURROW',
+	projector = function(src, x, y, typ, dam)
+		if game.level.map:dig(x, y, src) then
+			if type(dam) ~= 'table' then dam = {dam = dam,} end
+			src:incEquilibrium(dam.cost or 5)
+			if src and
+				src.equilibriumChance and not src:equilibriumChance() and
+				src.isTalentActive and src:isTalentActive 'T_WEIRD_BURROW'
+			then
+				src:forceUseTalent('T_WEIRD_BURROW', {no_energy = true,})
+			end
+		end
+	end,}

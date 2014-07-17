@@ -14,14 +14,15 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-local hook = function(self, data)
-  local load_data = function(loader, name)
-    require(loader):loadDefinition('/data-grayswandir-weird-wyrmic/'..name..'.lua')
-  end
-  load_data('engine.interface.ActorTalents', 'talents')
-  load_data('engine.interface.ActorTemporaryEffects', 'effects')
-	load_data('engine.Birther', 'birth')
-  load_data('engine.DamageType', 'damage-types')
-  load_data('grayswandir.inflict', 'inflicts')
-end
-class:bindHook('ToME:load', hook)
+newInflict {
+	name = 'blind',
+	desc = function(parameters)
+		return ('try to #YELLOW#blind#LAST# #SLATE#[phys vs phys, blind]#LAST# the target for %d turns. If this fails, instead try to #GREY#partially blind#LAST# #SLATE#[phys vs phys]#LAST# the target, reducing its accuracy by %d #SLATE#[phys, reduced by blind]#LAST#.')
+		:format(parameters.duration,
+						parameters.accuracy)
+	end,
+	action = function(self, target, parameters)
+		if self:inflictEffect(target, 'BLIND', parameters.duration, nil, 'blind') then return end
+		self:inflictEffect(target, 'WEIRD_PARTIALLY_BLINDED', parameters.duration, nil ,nil, {
+												 accuracy = parameters.accuracy})
+	end,}

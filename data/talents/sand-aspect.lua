@@ -54,7 +54,11 @@ newTalent {
 		return self:scale {low = 3, high = 7, t, after = 'floor',}
 	end,
 	buff_duration = function(self, t)
-		return 10
+		local duration = 10
+		if self:knowTalent('T_WEIRD_BURROW') then
+			duration = duration + self:callTalent('T_WEIRD_BURROW', 'barrier_duration')
+		end
+		return duration
 	end,
 	defense = function(self, t) return self:scale {low = 5, high = 30, t, 'str',} end,
 	resist = function(self, t) return self:scale {low = 0, high = 20, t, 'str',} end,
@@ -71,22 +75,25 @@ newTalent {
 		if not x or not y then return end
 		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
 
+		local hits = 0
 		if actor then
 			self:attackTarget(actor, 'PHYSICAL', get(t.damage, self, t), true)
+			hits = hits + 1
 		end
 
 		local project = get(t.project, self, t)
 		local dir = util.getDir(x, y, self.x, self.y)
 		local sides = util.dirSides(dir)
-		local hits = 0
 		for _, dir in pairs {5, sides.left, dir, sides.right} do
 			local x2, y2 = util.coordAddDir(x, y, dir)
 			local actor = game.level.map(x2, y2, map.ACTOR)
 			if actor then
 				hits = hits + 1
 				damage_type:get('PHYSICAL').projector(self, x2, y2, 'PHYSICAL', project)
-				actor:setEffect('EFF_WEIRD_PARTIALLY_BLINDED', get(t.debuff_duration, self, t), {
-													accuracy = get(t.accuracy, self, t)})
+				if actor:canBe 'blind' then
+					actor:setEffect('EFF_WEIRD_PARTIALLY_BLINDED', get(t.debuff_duration, self, t), {
+														accuracy = get(t.accuracy, self, t)})
+				end
 			end
 		end
 
@@ -116,6 +123,38 @@ If you hit anything, the kicked up sand will form a #LIGHT_UMBER#Sand Barrier#LA
 							get(t.buff_duration, self, t))
 	end,}
 
+newTalent {
+	name = 'Burrow', short_name = 'WEIRD_BURROW',
+	type = {'wild-gift/sand-aspect', 2,},
+	require = make_require(2),
+	points = 5,
+	mode = 'sustained',
+	no_energy = true,
+	cooldown = 12,
+	on_learn = Talents.recalc_draconic_form,
+	on_unlearn = Talents.recalc_draconic_form,
+	sustain_equilibrium = 20,
+	equilibrium_cost = function(self, t)
+		return self:scale {low = 9, high = 6, limit = 3, t,}
+	end,
+	barrier_duration = function(self, t)
+		return self:scale {low = 0, high = 4, t, after = 'floor'}
+	end,
+	activate = function(self, t)
+		local p = {}
+		self:talentTemporaryValue(p, 'can_pass', {pass_wall = 1,})
+		self:talentTemporaryValue(
+			p, 'move_project', {
+				WEIRD_BURROW = {cost = get(t.equilibrium_cost, self, t),},})
+		return p
+	end,
+	deactivate = function(self, t, p) return true end,
+	info = function(self, t)
+		return ([[While active you may burrow through diggable walls, costing you %.2f #00FF74#equilibrium#LAST# per wall. After burrowing, you must pass an equilibrium check to keep this sustained.
+This will also passively increase the duration of your #LIGHT_UMBER#Sand Barrier#LAST# by %d.]])
+			:format(get(t.equilibrium_cost, self, t),
+							get(t.barrier_duration, self, t))
+	end,}
 
 --[==[
 newTalent {
@@ -250,33 +289,6 @@ While active, whenever your #UMBER#Swallow#LAST# runs out of time, your equilibr
 							get(t.equilibrium_cost, self, t))
 	end,}
 
-newTalent {
-	name = 'Burrow', short_name = 'WEIRD_BURROW',
-	type = {'wild-gift/sand-aspect', 3,},
-	require = make_require(3),
-	points = 5,
-	equilibrium = 40,
-	range = 0,
-	cooldown = function(self, t) return 30 end,
-	duration = function(self, t)
-		return self:wwScale {min = 7, max = 20, talent = t, round = 'floor',}
-	end,
-	physcrit = function(self, t) return self:wwScale {min = 0, max = 12, talent = t,} end,
-	tactical = {CLOSEIN = 2, KNOCKBACK = 1,},
-	on_learn = Talents.recalc_draconic_form,
-	on_unlearn = Talents.recalc_draconic_form,
-	passives = function(self, t, p)
-		self:talentTemporaryValue(p, 'combat_physcrit', get(t.physcrit, self ,t))
-	end,
-	action = function(self, t)
-		self:setEffect('EFF_BURROW', get(t.duration, self, t), {})
-		return true
-	end,
-	info = function(self, t)
-		return ([[Upon activation, will allow you to burrow through walls for %d turns.
-The sharpest of claws are needed to burrow - this will passively increase your physical critical chance by %d%%.]])
-			:format(get(t.duration, self, t), get(t.physcrit, self, t))
-	end,}
 
 newTalent {
 	name = 'Sand Aspect', short_name = 'WEIRD_SAND_ASPECT',

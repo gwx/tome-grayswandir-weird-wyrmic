@@ -14,14 +14,25 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-local hook = function(self, data)
-  local load_data = function(loader, name)
-    require(loader):loadDefinition('/data-grayswandir-weird-wyrmic/'..name..'.lua')
-  end
-  load_data('engine.interface.ActorTalents', 'talents')
-  load_data('engine.interface.ActorTemporaryEffects', 'effects')
-	load_data('engine.Birther', 'birth')
-  load_data('engine.DamageType', 'damage-types')
-  load_data('grayswandir.inflict', 'inflicts')
+local g = require 'grayswandir.utils'
+local _M = loadPrevious(...)
+
+function _M:dig(x, y, src)
+	local terrain = self(x, y, _M.TERRAIN)
+	if not g.get(terrain, 'dig') then return end
+	local name, new, silent = terrain.dig, nil, false
+	if type(terrain.dig) == 'function' then
+		name, new, silent = terrain.dig(src, x, y, feat)
+	end
+	new = new or game.zone.grid_list[name]
+	if not new then return end
+	self(x, y, _M.TERRAIN, new)
+	game.nicer_tiles:updateAround(game.level, x, y)
+	if not silent then
+		game.logSeen({x = x, y = y}, "%s is dug out, turning into %s.",
+								 terrain.name:capitalize(), new.name)
+	end
+	return true
 end
-class:bindHook('ToME:load', hook)
+
+return _M
