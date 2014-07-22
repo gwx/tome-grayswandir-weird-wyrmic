@@ -35,24 +35,25 @@ local save_types = {
 function _M:inflictEffect(target, name, duration, power, resist, parameters)
 	local id = 'EFF_'..name
 	local effect = self.tempeffect_def[id]
+	game.log('power %s', power or self[power_types[effect.type]](self))
 	if target:checkHit(
-		target[save_types[effect.type]],
-		power or self[power_types[effect.type]],
+		target[save_types[effect.type]](target),
+		power or self[power_types[effect.type]](self),
 		0, 95)
-		and
-		(resist and
-			 (type(resist) == 'string' and
-					target:canBe(resist) or
-					rng.percent(resist)))
-	then
-		if not parameters then parameters = {} end
-		target:setEffect(id, duration, parameters)
-		return true
+	then return end
+
+	if resist then
+		if type(resist) == 'string' and not target:canBe(resist) then return end
+		if type(resist) == 'number' and rng.percent(resist) then return end
 	end
+
+	if not parameters then parameters = {} end
+	target:setEffect(id, duration, parameters)
+	return true
 end
 
 function _M:describeInflict(name, parameters)
-	return self.inflict_def[name](paremeters)
+	return self.inflict_def[name].desc(parameters)
 end
 
 -- Add to actor.

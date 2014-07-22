@@ -29,7 +29,7 @@ Talents.cooldown_group = function(self, t)
 end
 
 for _, file in pairs {
-	'draconic-form', 'fire-aspect', 'ice-aspect', 'storm-aspect', 'sand-aspect',}
+	'draconic-form', 'draconic-might', 'fire-aspect', 'ice-aspect', 'storm-aspect', 'sand-aspect',}
 do
 	load('/data-grayswandir-weird-wyrmic/talents/'..file..'.lua')
 end

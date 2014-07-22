@@ -39,7 +39,7 @@ newTalentType {
 
 local make_require = function(tier)
 	return {
-		stat = {wil = function(level) return 2 + tier * 8 + level * 2 end,},
+		stat = {str = function(level) return 2 + tier * 8 + level * 2 end,},
 		level = function(level) return -5 + tier * 4 + level end,}
 end
 
@@ -93,13 +93,10 @@ newTalent {
 	mode = 'passive',
 	auto_relearn_passive = true,
 	combat_physcrit = function(self, t)
-		return self:wwScale {min = 2, max = 16, talent = t, stat = 'wil',}
-	end,
-	callbackOnStatChange = function(self, t, stat, value)
-		if stat == self.STAT_WIL then self:updateTalentPassives(t) end
+		return self:scale {low = 4, high = 11, t,}
 	end,
 	shared_cooldown = function(self, t)
-		return self:wwScale {min = 10, max = 4.5, limit = 2, talent = t, round = 'floor',}
+		return self:scale {low = 10, high = 4.5, limit = 2, t, after = 'floor',}
 	end,
 	threshold = 10,
 	passives = function(self, t, p)
@@ -119,9 +116,9 @@ newTalent {
 				needed and ('%.1f'):format(needed) or 'no')
 			msg = msg .. part .. '\n'
 		end
-		return ([[You have learned to emulate the aggressive nature of dragons, increasing your physical critical chance by %d%%.
+		return ([[You have learned to emulate the aggressive nature of dragons, increasing your physical critical chance by %d%% #SLATE#[*]#LAST#.
 
-You will also learn the following talents. They will all have a shared cooldown of %d :
+You will also learn the following talents. They will all have a shared cooldown of %d #SLATE#[*]#LAST# :
 %s]])
 			:format(util.getval(t.combat_physcrit, self, t),
 							util.getval(t.shared_cooldown, self, t),
@@ -134,15 +131,18 @@ newTalent {
 	require = make_require(2),
 	points = 5,
 	mode = 'passive',
-	resists = function(self, t) return self:wwScale {min = 0.3, max = 1.2, talent = t,} end,
-	combat_armor_hardiness = function(self, t) return self:wwScale {min = 0, max = 12, talent = t,} end,
-	combat_armor = function(self, t) return self:wwScale {min = 3, max = 20, talent = t,} end,
+	resists = function(self, t) return self:scale {low = 0.3, high = 1.2, t,} end,
+	combat_armor_hardiness = function(self, t) return self:scale {low = 0, high = 12, t,} end,
+	combat_armor = function(self, t) return self:scale {low = 3, high = 30, t, 'con',} end,
+	callbackOnStatChange = function(self, t, stat, value)
+		if stat == self.STAT_CON then self:updateTalentPassives(t) end
+	end,
 	passives = function(self, t, p)
 		local resists = {}
 		local resist_mult = util.getval(t.resists, self, t)
 		for element, type in pairs(elements) do
 			local mult = 1
-			if type == 'PHYSICAL' then mult = 0.7 end
+			if type == 'PHYSICAL' then mult = 0.6 end
 			resists[type] = resist_mult * get_element_points(self, element) * mult
 		end
 		self:talentTemporaryValue(p, 'resists', resists)
@@ -158,7 +158,7 @@ newTalent {
 			local color = damage_type:get(type).text_color or '#WHITE#'
 			msg = msg .. ('%s%s#WHITE# +%.1f%%\n'):format(color, type:lower():capitalize()..': ', resist_mult * (get_element_points(self, element) or 0))
 		end
-		return ([[Your body has hardened, giving you %d armour and %d%% hardiness.
+		return ([[Your body has hardened, giving you %d #SLATE#[*, con]#LAST# armour and %d%% #SLATE#[*]#LAST# hardiness.
 You will also get the following resists based on your elemental talents:
 %s]])
 			:format(util.getval(t.combat_armor, self, t),
@@ -187,19 +187,16 @@ newTalent {
 	points = 5,
 	mode = 'passive',
 	knockback_immune = function(self, t)
-		return self:wwScale {min = 0.10, max = 0.40, talent = t, stat = 'con',}
+		return self:scale {low = 0.10, high = 0.40, t,}
 	end,
 	pin_immune = function(self, t)
-		return self:wwScale {min = 0.10, max = 0.30, talent = t, stat = 'con',}
+		return self:scale {low = 0.10, high = 0.30, t,}
 	end,
 	fear_immune = function(self, t)
-		return self:wwScale {min = 0.10, max = 0.20, talent = t, stat = 'con',}
-	end,
-	callbackOnStatChange = function(self, t, stat, value)
-		if stat == self.STAT_CON then self:updateTalentPassives(t) end
+		return self:scale {low = 0.10, high = 0.20, t,}
 	end,
 	shared_cooldown = function(self, t)
-		return self:wwScale {min = 30, max = 12, limit = 5, talent = t, round = 'floor',}
+		return self:scale {low = 18, high = 9, limit = 5, t, after = 'floor',}
 	end,
 	threshold = 16,
 	auto_relearn_passive = true,
@@ -224,9 +221,9 @@ newTalent {
 				needed and ('%.1f'):format(needed) or 'no')
 			msg = msg .. part .. '\n'
 		end
-		return ([[You have learned to emulate the proud bearing and aura of dragons, increasing your knockback immunity by %d%% #SLATE#[con]#LAST#, your pin immunity by %d%% #SLATE#[con]#LAST#, and your fear immunity by %d%% #SLATE#[con]#LAST#.
+		return ([[You have learned to emulate the proud bearing and aura of dragons, increasing your knockback immunity by %d%% #SLATE#[*]#LAST#, your pin immunity by %d%% #SLATE#[*]#LAST#, and your fear immunity by %d%% #SLATE#[*]#LAST#.
 
-You will also learn the following talents. They will all have a shared cooldown of %d :
+You will also learn the following talents. They will all have a shared cooldown of %d #SLATE#[*]#LAST# :
 %s]])
 			:format(util.getval(t.knockback_immune, self, t) * 100,
 							util.getval(t.pin_immune, self, t) * 100,
@@ -256,16 +253,16 @@ newTalent {
 	points = 5,
 	mode = 'passive',
 	shared_cooldown = function(self, t)
-		return self:wwScale {min = 40, max = 16, limit = 8, talent = t, round = 'floor',}
+		return self:scale {min = 24, max = 12, limit = 8, talent = t, round = 'floor',}
 	end,
 	max_life = function(self, t)
-		return self:wwScale {min = 20, max = 120, talent = t, stat = 'con',}
+		return self:scale {low = 20, high = 120, t, 'con',}
 	end,
 	life_regen = function(self, t)
-		return self:wwScale {min = 0.5, max = 3.0, talent = t,}
+		return self:scale {low = 0, high = 4, t, 'con',}
 	end,
 	healing_factor = function(self, t)
-		return self:wwScale {min = 0.05, max = 0.30, stat = 'con',}
+		return self:scale {low = 0, high = 0.4, t, 'con',}
 	end,
 	callbackOnStatChange = function(self, t, stat, value)
 		if stat == self.STAT_CON then self:updateTalentPassives(t) end
@@ -293,9 +290,9 @@ newTalent {
 				needed and ('%.1f'):format(needed) or 'no')
 			msg = msg .. part .. '\n'
 		end
-		return ([[Your great endurance and stamina at last allow you the dragon's most fearsome weapon, their breaths. This passively gives you %d #SLATE#[con]#LAST# max life, %.1f life regen and %d%% #SLATE#[con]#LAST# healing factor.
+		return ([[Your great endurance and stamina at last allow you the dragon's most fearsome weapon, their breaths. This passively gives you %d #SLATE#[*, con]#LAST# max life, %.1f #SLATE#[*, con]#LAST# life regen and %d%% #SLATE#[*, con]#LAST# healing factor.
 
-You will also learn the following talents. They will all have a shared cooldown of %d :
+You will also learn the following talents. They will all have a shared cooldown of %d #SLATE#[*]#LAST#:
 %s]])
 			:format(util.getval(t.max_life, self, t),
 							util.getval(t.life_regen, self, t),

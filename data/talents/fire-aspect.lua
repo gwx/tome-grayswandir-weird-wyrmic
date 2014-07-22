@@ -18,6 +18,7 @@ local dd = Talents.damDesc
 local map = require 'engine.Map'
 local damage_type = require 'engine.DamageType'
 local particles = require 'engine.Particles'
+local get = util.getval
 
 newTalentType {
 	type = 'wild-gift/fire-aspect',
@@ -37,31 +38,27 @@ newTalent {
 	require = make_require(1),
 	points = 5,
 	equilibrium = 4,
-	cooldown = function(self, t)
-		local cd = 16
-		if self:knowTalent('T_WEIRD_FIRE_ASPECT') then
-			cd = cd - self:callTalent('T_WEIRD_FIRE_ASPECT', 'cooldown_reduce')
-		end
-		return cd
-	end,
-	damage = function(self, t) return self:wwScale {min = 1.3, max = 2.0, talent = t,} end,
-	range = function(self, t) return self:wwScale {min = 3, max = 6, stat = 'str', round = 'floor',} end,
-	duration = function(self, t) return self:wwScale {min = 5, max = 9, stat = 'wil',} end,
+	cooldown = 12,
+	no_energy = 'fake',
+	weapon_mult = function(self, t) return self:scale {low = 1.3, high = 2.0, t,} end,
+	range = 4,
+	duration = function(self, t) return self:scale {low = 5, high = 12, t, after = 'floor',} end,
 	project = function(self, t)
-		return self:wwScale {min = 10, max = 50, talent = t, stat = 'wil', scale = 'damage',}
+		return self:scale {low = 10, high = 50, 'mind', after = 'damage',}
 	end,
-	sight = function(self, t) return -self:wwScale {min = 6, max = 3, stat = 'wil', round = 'floor',} end,
-	requires_target = true,
+	sight = function(self, t)
+		return self:scale {low = -6, high = -2, limit = 0, t, after = 'floor',}
+	end,
 	tactical = {ATTACK = 2,},
 	requires_target = true,
 	target = function(self, t)
-		return {type = 'hit', talent = t, range = util.getval(t.range, self, t),}
+		return {type = 'hit', talent = t, range = get(t.range, self, t),}
 	end,
 	on_pre_use = function(self, t) return not self:attr('never_move') end,
 	on_learn = Talents.recalc_draconic_form,
 	on_unlearn = Talents.recalc_draconic_form,
 	action = function(self, t)
-		local tg = util.getval(t.target, self, t)
+		local tg = get(t.target, self, t)
 		local x, y, actor = self:getTarget(tg)
 		if not x or not y or not actor then return end
 		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
@@ -89,22 +86,30 @@ newTalent {
 		end
 
 		if core.fov.distance(self.x, self.y, x, y) == 1 then
-			self:setEffect('EFF_WEIRD_BURNING_RAGE', util.getval(t.duration, self, t), {
-											 src = self,
-											 sight = util.getval(t.sight, self, t),
-											 project = util.getval(t.project, self, t),})
-			self:attackTarget(actor, nil, util.getval(t.damage, self, t), true)
+			local eff = {
+				src = self,
+				temps = {
+					sight = get(t.sight, self, t),
+					melee_project = {FIREBURN = get(t.project, self, t),},},}
+			if self:knowTalent 'T_WEIRD_FOCUSED_FURY' then
+				local t2 = self:getTalentFromId 'T_WEIRD_FOCUSED_FURY'
+				eff.temps.combat_mentalresist = get(t2.combat_mentalresist, self ,t2)
+				eff.temps.combat_physspeed = get(t2.combat_physspeed, self ,t2)
+				eff.temps.confusion_immune = get(t2.confusion_immune, self ,t2)
+			end
+			self:setEffect('EFF_WEIRD_BURNING_RAGE', get(t.duration, self, t), eff)
+			self:attackTarget(actor, nil, get(t.weapon_mult, self, t))
 			return true
 		end
 	end,
 	info = function(self, t)
-		return ([[Rush forward in a #ORANGE#Burning Rage#LAST#, striking a target within %d #SLATE#[str]#LAST# spaces for %d%% weapon damage.
-This will last for %d #SLATE#[wil]#LAST# turns, giving you %d #SLATE#[wil]#LAST# extra #LIGHT_RED#fire burn#LAST# damage on melee attacks, but reducing your vision radius by %d #SLATE#[wil]#LAST#.]])
-			:format(util.getval(t.range, self, t),
-							util.getval(t.damage, self, t) * 100,
-							util.getval(t.duration, self, t),
-							dd(self, 'FIRE', util.getval(t.project, self, t)),
-							0	- util.getval(t.sight, self, t))
+		return ([[Rush forward in a #ORANGE#Burning Rage#LAST#, striking a target within %d tiles for %d%% #SLATE#[*]#LAST# weapon damage.
+The #ORANGE#Burning Rage#LAST# will last for %d #SLATE#[*]#LAST# turns, giving you %d #SLATE#[mind]#LAST# extra #LIGHT_RED#fire burn#LAST# damage on melee attacks, but reducing your vision radius by %d #SLATE#[*]#LAST#, as your rage inhibits peripheral vision.]])
+			:format(get(t.range, self, t),
+							get(t.weapon_mult, self, t) * 100,
+							get(t.duration, self, t),
+							dd(self, 'FIRE', get(t.project, self, t)),
+							0	- get(t.sight, self, t))
 	end,}
 
 newTalent {
@@ -115,36 +120,37 @@ newTalent {
 	equilibrium = 7,
 	tactical = {ATTACK = 2,},
 	range = 1,
+	no_energy = 'fake',
 	cooldown = function(self, t)
-		return not self:hasEffect('EFF_WEIRD_BURNING_RAGE') and 10 or
-			util.getval(t.rage_cooldown, self, t)
+		return self:hasEffect 'EFF_WEIRD_BURNING_RAGE' and
+			get(t.base_cooldown, self, t) or
+			get(t.rage_cooldown, self, t)
 	end,
+	base_cooldown = 10,
+	rage_cooldown = 6,
 	on_learn = Talents.recalc_draconic_form,
 	on_unlearn = Talents.recalc_draconic_form,
-	rage_cooldown = function(self, t)
-		return self:wwScale {min = 10, max = 4.5, limit = 2, talent = t, round = 'floor',}
-	end,
 	radius = function(self, t)
-		return self:wwScale {min = 1, max = 3, stat = 'str', round = 'floor',}
+		return self:scale {low = 1, high = 5, limit = 8, t, after = 'floor',}
 	end,
-	damage = function(self, t)
-		return self:wwScale {min = 1.2, max = 2.0, talent = t,}
+	weapon_mult = function(self, t)
+		return self:scale {low = 1.2, high = 2.0, t,}
 	end,
 	duration = 5,
 	fire_mult = function(self, t)
-		return self:wwScale {min = 1.0, max = 1.7, stat = 'wil',}
+		return self:scale {low = 1.0, high = 3.5, t, 'mind',}
 	end,
 	target = function(self, t)
-		return {type = 'hit', range = util.getval(t.range, self, t), talent = t,}
+		return {type = 'hit', range = get(t.range, self, t), talent = t,}
 	end,
 	action = function(self, t)
-		local tg = util.getval(t.target, self, t)
+		local tg = get(t.target, self, t)
 		local x, y, actor = self:getTarget(tg)
 		if not x or not y or not actor then return end
 		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
 
-		local damage = util.getval(t.damage, self, t)
-		if self:attackTarget(actor, nil, damage, true) then
+		local weapon_mult = get(t.weapon_mult, self, t)
+		if self:attackTarget(actor, nil, weapon_mult) then
 			local burn = actor:hasEffect('EFF_BURNING')
 			if burn then
 				local power = burn.power * burn.dur
@@ -152,11 +158,11 @@ newTalent {
 				damage_type:get('FIRE').projector(
 					self, actor.x, actor.y, 'FIRE', power)
 
-				local radius = util.getval(t.radius, self, t)
+				local radius = get(t.radius, self, t)
 				game.level.map:particleEmitter(actor.x, actor.y, radius + 2, 'ball_fire', {radius = radius + 2,})
 				game:playSoundNear(self, 'talents/fire')
 
-				local duration = util.getval(t.duration, self, t)
+				local duration = get(t.duration, self, t)
 				local effect = game.level.map:addEffect(
 					self, actor.x, actor.y, duration, 'FIRE', power / duration,
 					radius, 5, nil, {type = 'inferno',}, nil, 0, 0)
@@ -167,13 +173,14 @@ newTalent {
 		return true
 	end,
 	info = function(self, t)
-		return ([[Strike the target for %d%% weapon damage. If the target is currently burning, this will consume the flames on the target to deal %d%% #SLATE#[wil]#LAST# of the total damage instantly, and will leave flames on the ground in radius %d #SLATE#[str]#LAST# dealing the same amount of damage over %d turns.
-This talent only has a %d turn cooldown if used while in a #ORANGE#Burning Rage#LAST#.]])
-			:format(util.getval(t.damage, self, t) * 100,
-							util.getval(t.fire_mult, self, t) * 100,
-							util.getval(t.radius, self, t),
-							util.getval(t.duration, self, t),
-							util.getval(t.rage_cooldown, self, t))
+		return ([[Strike the target for %d%% #SLATE#[*]#LAST# weapon damage. If the target is currently #LIGHT_RED#Burning#LAST#, this will consume the flames on the target to deal %d%% #SLATE#[*, mind]#LAST# of the total remaining damage instantly, and will leave flames on the ground in radius %d #SLATE#[*]#LAST# dealing the same amount of damage over %d turns.
+This talent normally has a %d cooldown, but only has a %d turn cooldown if used while in a #ORANGE#Burning Rage#LAST#.]])
+			:format(get(t.weapon_mult, self, t) * 100,
+							get(t.fire_mult, self, t) * 100,
+							get(t.radius, self, t),
+							get(t.duration, self, t),
+							get(t.base_cooldown, self, t),
+							get(t.rage_cooldown, self, t))
 	end,}
 
 newTalent {
@@ -188,46 +195,37 @@ newTalent {
 	on_learn = Talents.recalc_draconic_form,
 	on_unlearn = Talents.recalc_draconic_form,
 	equilibrium_cost = function(self, t)
-		return self:wwScale {min = 4, max = 1, stat = 'wil', round = 'ceil',}
+		return self:scale {min = 2.5, max = 1, t,}
 	end,
 	life_percent = function(self, t)
-		return self:wwScale {min = 0.10, max = 0.05, talent = t,}
+		return self:scale {low = 0.10, high = 0.05, limit = 0.01, t,}
 	end,
 	combat_mentalresist = function(self, t)
-		return self:wwScale {min = 5, max = 30, stat = 'wil', talent = t,}
+		return self:scale {low = 10, high = 80, 'mind', t,}
 	end,
 	combat_physspeed = function(self, t)
-		return self:wwScale {min = 0.02, max = 0.20, stat = 'wil', talent = t,}
+		return self:scale {low = 0, high = 0.25, t,}
 	end,
 	confusion_immune = function(self, t)
-		return self:wwScale {min = 0.02, max = 0.10, talent = t,}
+		return self:scale {low = 0, high = 0.3, t,}
 	end,
 	tactical = {BUFF = 2,},
-	passives = function(self, t, p)
-		self:effectTemporaryValue(p, 'burning_rage_bonuses', {
-																combat_mentalresist = util.getval(t.combat_mentalresist, self, t),
-																combat_physspeed = util.getval(t.combat_physspeed, self, t),
-																confusion_immune = util.getval(t.confusion_immune, self, t),})
-	end,
-	callbackOnStatChange = function(self, t, stat, value)
-		if stat == self.STAT_WIL then self:updateTalentPassives(t) end
-	end,
 	activate = function(self, t) return {} end,
 	deactivate = function(self, t, p) return true end,
 	damage_feedback = function(self, t, p, src, value)
-		local rage = self:hasEffect('EFF_WEIRD_BURNING_RAGE')
+		local rage = self:hasEffect 'EFF_WEIRD_BURNING_RAGE'
 		if rage then
 			rage.damage_taken = (rage.damage_taken or 0) + value
 		end
 	end,
 	info = function(self, t)
-		return ([[This will passively enhance your #ORANGE#Burning Rage#LAST#. It will now give you +%d #SLATE#[wil]#LAST# mental save, +%d%% #SLATE#[wil]#LAST# combat speed, and +%d%% #SLATE#[wil]#LAST# confusion immunity.
-While active, on any turn on which you are raging and take damage totaling at least %d%% of your life, your equilibrium will increase by %d #SLATE#[wil]#LAST# and your #ORANGE#Burning Rage#LAST# will be extended by 1 turn, provided you pass an equilibrium check.]])
-			:format(util.getval(t.combat_mentalresist, self, t),
-							util.getval(t.combat_physspeed, self, t) * 100,
-							util.getval(t.confusion_immune, self, t) * 100,
-							util.getval(t.life_percent, self, t) * 100,
-							util.getval(t.equilibrium_cost, self, t))
+		return ([[This will passively enhance your #ORANGE#Burning Rage#LAST#. It will now give you +%d #SLATE#[*, mind]#LAST# mental save, +%d%% #SLATE#[*]#LAST# combat speed, and +%d%% #SLATE#[*]#LAST# confusion immunity.
+While active, on any turn on which you are raging and take damage totaling at least %d%% #SLATE#[*]#LAST# of your life, your #00FF74#equilibrium#LAST# will increase by %d #SLATE#[wil]#LAST# and your #ORANGE#Burning Rage#LAST# will be extended by 1 turn, provided you pass an #00FF74#equilibrium#LAST# check.]])
+			:format(get(t.combat_mentalresist, self, t),
+							get(t.combat_physspeed, self, t) * 100,
+							get(t.confusion_immune, self, t) * 100,
+							get(t.life_percent, self, t) * 100,
+							get(t.equilibrium_cost, self, t))
 	end,}
 
 newTalent {
@@ -239,41 +237,31 @@ newTalent {
 	on_learn = Talents.recalc_draconic_form,
 	on_unlearn = Talents.recalc_draconic_form,
 	inc_damage = function(self, t)
-		return self:wwScale {min = 5, max = 35, talent = t, stat = 'wil',}
+		return self:scale {low = 5, high = 25, t,}
 	end,
 	resists_pen = function(self, t)
-		return self:wwScale {min = 3, max = 10, talent = t,}
+		return self:scale {low = 0, high = 12, t,}
 	end,
 	equilibrium_gain = function(self, t)
-		return self:wwScale {min = 0.2, max = 2, talent = t,}
-	end,
-	cooldown_reduce = function(self, t)
-		return self:wwScale {min = 1, max = 6, talent = t, round = 'floor',}
+		return self:scale {low = 0.2, high = 2, t,}
 	end,
 	passives = function(self, t, p)
-		self:effectTemporaryValue(
-			p, 'equilibrium_on_damage', {FIRE = util.getval(t.equilibrium_gain, self, t),})
-		self:effectTemporaryValue(
-			p, 'inc_damage', {FIRE = util.getval(t.inc_damage, self, t),})
-		self:effectTemporaryValue(
-			p, 'inc_burn_damage', util.getval(t.inc_damage, self, t))
-		self:effectTemporaryValue(
-			p, 'resists_pen', {FIRE = util.getval(t.resists_pen, self, t),})
-	end,
-	callbackOnStatChange = function(self, t, stat, value)
-		if stat == self.STAT_WIL then self:updateTalentPassives(t) end
+		self:autoTemporaryValues(
+			p, {
+				equilibrium_on_damage = {FIRE = get(t.equilibrium_gain, self, t),},
+				inc_damage = {FIRE = get(t.inc_damage, self, t),},
+				inc_burn_damage = get(t.inc_damage, self, t),
+				resists_pen = {FIRE = get(t.resists_pen, self, t),},})
 	end,
 	activate = function(self, t) return {} end,
 	deactivate = function(self, t, p) return true end,
 	info = function(self, t)
-		return ([[You have mastered your ability to manipulate flame as a dragon would. You gain %d%% #SLATE#[wil]#LAST# to all #LIGHT_RED#fire#LAST# damage done, an additional #SLATE#(multiplicative)#LAST# %d%% #SLATE#[wil]#LAST# to all #LIGHT_RED#fire burn#LAST# damage done, and %d%% #LIGHT_RED#fire#LAST# resistance piercing. You regain %.1f equilibrium on any turn in which you deal #LIGHT_RED#fire#LAST# damage.
-This also reduces the cooldown of Raging Rush by %d.
+		return ([[You have mastered your ability to manipulate flame as a dragon would. You gain %d%% #SLATE#[*]#LAST# to all #LIGHT_RED#fire#LAST# damage done, an additional #SLATE#(multiplicative)#LAST# %d%% #SLATE#[*, mind]#LAST# to all #LIGHT_RED#fire burn#LAST# damage done, and %d%% #SLATE#[*]#LAST# #LIGHT_RED#fire#LAST# resistance piercing. You recover %.1f #SLATE#[*]#LAST# #00FF74#equilibrium#LAST# on any turn in which you deal #LIGHT_RED#fire#LAST# damage.
 Points in this talent count double for the purposes of draconic form talents.]])
-			:format(util.getval(t.inc_damage, self, t),
-							util.getval(t.inc_damage, self, t),
-							util.getval(t.resists_pen, self, t),
-							util.getval(t.equilibrium_gain, self, t),
-							util.getval(t.cooldown_reduce, self, t))
+			:format(get(t.inc_damage, self, t),
+							get(t.inc_damage, self, t),
+							get(t.resists_pen, self, t),
+							get(t.equilibrium_gain, self, t))
 	end,}
 
 newTalent {
@@ -281,25 +269,25 @@ newTalent {
 	type = {'wild-gift/draconic-claw', 1,}, hide = true,
 	points = 5,
 	equilibrium = 3,
+	no_energy = 'fake',
 	cooldown = function(self, t)
 		return self:callTalent('T_WEIRD_DRACONIC_CLAW', 'shared_cooldown')
 	end,
-	damage = function(self, t) return self:wwScale {min = 1.5, max = 2.5, talent = t,} end,
+	weapon_mult = function(self, t) return self:scale {low = 1.5, high = 2.5, t,} end,
 	requires_target = true,
 	tactical = {ATTACK = 2,},
 	requires_target = true,
 	range = 1,
 	target = function(self, t)
-		return {type = 'hit', talent = t, range = util.getval(t.range, self, t),}
+		return {type = 'hit', talent = t, range = get(t.range, self, t),}
 	end,
 	action = function(self, t)
-		local tg = util.getval(t.target, self, t)
+		local tg = get(t.target, self, t)
 		local x, y, actor = self:getTarget(tg)
 		if not x or not y or not actor then return end
 		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
 
-		local damage = util.getval(t.damage, self, t)
-		self:attackTarget(actor, 'FIREBURN', damage, true)
+		self:attackTarget(actor, 'FIREBURN', get(t.weapon_mult, self, t))
 		game:playSoundNear(self, 'talents/fire')
 
 		Talents.cooldown_group(self, t)
@@ -307,8 +295,8 @@ newTalent {
 		return true
 	end,
 	info = function(self, t)
-		return ([[Hit the target for %d%% weapon #LIGHT_RED#fire burn#LAST# damage.]])
-			:format(util.getval(t.damage, self, t) * 100)
+		return ([[Hit the target for %d%% #SLATE#[*]#LAST# weapon #LIGHT_RED#fire burn#LAST# damage.]])
+			:format(get(t.weapon_mult, self, t) * 100)
 	end,}
 
 newTalent {
@@ -316,50 +304,49 @@ newTalent {
 	type = {'wild-gift/draconic-aura', 1,}, hide = true,
 	points = 5,
 	equilibrium = 16,
+	is_mind = true,
 	cooldown = function(self, t)
 		return self:callTalent('T_WEIRD_DRACONIC_AURA', 'shared_cooldown')
 	end,
 	tactical = {ATTACKAREA = 2,},
 	range = 0,
-	radius = function(self, t) return self:wwScale {min = 2, max = 4, talent = t,} end,
+	radius = function(self, t) return self:scale {low = 2, high = 5, limit = 8, t, after = 'floor',} end,
 	damage = function(self, t)
-		return self:wwScale {
-			min = 15, max = 60, talent = t, stat = 'str', scale = 'damage',}
+		return self:scale {
+			low = 15, high = 60, t, 'phys', after = 'damage',}
 	end,
-	duration = function(self, t) return self:wwScale {min = 4, max = 7, stat = 'str',} end,
-	intimidate = function(self, t) return self:wwScale {min = 5, max = 50, talent = t, stat = 'wil',} end,
-	intimidate_dur = function(self, t)
-		return self:wwScale {min = 3, max = 10, stat = 'wil', round = 'floor',}
-	end,
+	duration = 6,
+	intimidate = function(self, t) return self:scale {low = 10, high = 80, t, 'mind',} end,
+	intimidate_dur = 7,
 	target = function(self, t)
-		return {type = 'ball', talent = t, selffire = false,
-						range = util.getval(t.range, self, t),
-						radius = util.getval(t.radius, self, t),}
+		return {type = 'ball', talent = t, friendlyfire = false,
+						range = get(t.range, self, t),
+						radius = get(t.radius, self, t),}
 	end,
 	action = function(self, t)
-		local tg = util.getval(t.target, self, t)
+		local tg = get(t.target, self, t)
 
-		local radius = util.getval(t.radius, self, t)
+		local radius = get(t.radius, self, t)
 		game.level.map:particleEmitter(self.x, self.y, radius + 2, 'ball_fire', {radius = radius + 2,})
 		game:playSoundNear(self, 'talents/fire')
 
-		local damage = util.getval(t.damage, self, t)
-		local duration = util.getval(t.duration, self, t)
+		local damage = get(t.damage, self, t)
+		local duration = get(t.duration, self, t)
 		local effect = game.level.map:addEffect(
 			self, self.x, self.y, duration, 'FIREBURN', damage,
 			radius, 5, nil, {type = 'inferno',}, nil, 0, 0)
 		effect.name = ('%s\'s flames'):format(self.name:capitalize())
 
-		local intimidate = util.getval(t.intimidate, self, t)
-		local intimidate_dur = util.getval(t.intimidate_dur, self, t)
+		local intimidate = get(t.intimidate, self, t)
+		local intimidate_dur = get(t.intimidate_dur, self, t)
 		local projector = function(x, y, tg, self)
 			local actor = game.level.map(x, y, map.ACTOR)
 			if not actor then return end
 			local resist = util.bound((actor.fear_immune or 0) * 100 + actor:combatGetResist('FIRE'), 0, 100)
 			if not rng.percent(resist) then
 				actor:setEffect('EFF_INTIMIDATED', intimidate_dur, {
-													 apply_power = self:combatPhysicalpower(),
-													 power = intimidate,})
+													apply_power = self:combatPhysicalpower(),
+													power = intimidate,})
 			end
 		end
 		self:project(tg, self.x, self.y, projector)
@@ -370,12 +357,12 @@ newTalent {
 		return true
 	end,
 	info = function(self, t)
-		return ([[Set the ground around you alight in radius %d, dealing %d #SLATE#[str]#LAST# #LIGHT_RED#fire burn#LAST# damage for %d #SLATE#[str]#LAST# turns. Each enemy standing on one of these tiles will be intimidated #SLATE#[phys vs mind, checks (fear immunity + fire resistance)]#LAST#, losing %d #SLATE#[wil]#LAST# physical, spell, and mind power for %d #SLATE#[wil]#LAST# turns.]])
-			:format(util.getval(t.radius, self, t),
-							dd(self, 'FIRE', util.getval(t.damage, self, t)),
-							util.getval(t.duration, self, t),
-							util.getval(t.intimidate, self ,t),
-							util.getval(t.intimidate_dur, self ,t))
+		return ([[Set the ground around you alight in radius %d #SLATE#[*]#LAST#, dealing %d #SLATE#[phys]#LAST# #LIGHT_RED#fire burn#LAST# damage for %d turns. Each enemy standing on one of these tiles will be intimidated #SLATE#[phys vs mind, checks (fear immunity + fire resistance)]#LAST#, losing %d #SLATE#[mind]#LAST# physical, spell, and mind power for %d turns.]])
+			:format(get(t.radius, self, t),
+							dd(self, 'FIRE', get(t.damage, self, t)),
+							get(t.duration, self, t),
+							get(t.intimidate, self ,t),
+							get(t.intimidate_dur, self ,t))
 	end,}
 
 newTalent {
@@ -389,30 +376,29 @@ newTalent {
 	tactical = {ATTACKAREA = 2,},
 	range = 0,
 	direct_hit = true,
-	radius = function(self, t) return self:wwScale {min = 5, max = 9, talent = t,} end,
+	is_mind = true,
+	radius = function(self, t) return self:scale {low = 5, high = 8, limit = 10, t, after = 'ceil',} end,
 	damage = function(self, t)
-		return self:wwScale {
-			min = 40, max = 400, talent = t, stat = 'str', scale = 'damage',}
+		return self:scale {low = 40, high = 400, t, 'phys', after = 'damage',}
 	end,
 	ground_damage = function(self, t)
-		return self:wwScale {
-			min = 20, max = 90, talent = t, stat = 'str', scale = 'damage',}
+		return self:scale {low = 20, high = 90, t, 'phys', after = 'damage',}
 	end,
-	duration = function(self, t) return self:wwScale {min = 8, max = 12, stat = 'str',} end,
+	duration = function(self, t) return self:scale {low = 8, high = 12, limit = 16, t, after = 'floor'} end,
 	target = function(self, t)
 		return {type = 'cone', talent = t, selffire = false,
-						range = util.getval(t.range, self, t),
-						radius = util.getval(t.radius, self, t),}
+						range = get(t.range, self, t),
+						radius = get(t.radius, self, t),}
 	end,
 	action = function(self, t)
-		local tg = util.getval(t.target, self, t)
+		local tg = get(t.target, self, t)
 		local x, y = self:getTarget(tg)
 		if not x or not y then return end
 
-		local damage = self:mindCrit(util.getval(t.damage, self, t))
-		local duration = util.getval(t.duration, self, t)
-		local ground_damage = util.getval(t.duration, self, t)
-		local rage = self:hasEffect('EFF_WEIRD_BURNING_RAGE')
+		local damage = self:mindCrit(get(t.damage, self, t))
+		local duration = get(t.duration, self, t)
+		local ground_damage = get(t.duration, self, t)
+		local kills = 0
 		local projector = function(x, y, tg, self)
 			local effect = game.level.map:addEffect(
 				self, x, y, duration, 'FIREBURN', ground_damage,
@@ -424,9 +410,11 @@ newTalent {
 
 			damage_type:get('FIRE').projector(self, x, y, 'FIRE', damage)
 
-			if actor.dead and rage then rage.dur = rage.dur + 1 end
+			if actor.dead then kills = kills + 1 end
 		end
 		self:project(tg, x, y, projector)
+
+		self:alterTalentCoolingdown('T_WEIRD_RAGING_RUSH', -kills)
 
 		game.level.map:particleEmitter(self.x, self.y, tg.radius, 'breath_fire', {
 																		 radius = tg.radius,
@@ -444,10 +432,10 @@ newTalent {
 		return true
 	end,
 	info = function(self, t)
-		return ([[Breathe fire at your foes, doing %d #SLATE#[str]#LAST# #LIGHT_RED#fire#LAST# damage #SLATE#[mind crit]#LAST# in a radius %d cone. It will also leave burning flames on the ground for %d #SLATE#[str]#LAST# turns, doing %d #SLATE#[str]#LAST# #LIGHT_RED#fire burn#LAST# damage each turn.
-Every enemy killed in the initial blast will raise your burning rage duration by 1, if you have it.]])
-			:format(dd(self, 'FIRE', util.getval(t.damage, self, t)),
-							util.getval(t.radius, self, t),
-							util.getval(t.duration, self, t),
-							dd(self, 'FIRE', util.getval(t.ground_damage, self ,t)))
+		return ([[Breathe fire at your foes, doing %d #SLATE#[*, phys, mind crit]#LAST# #LIGHT_RED#fire#LAST# damage in a radius %d #SLATE#[*]#LAST# cone. It will also leave burning flames on the ground for %d #SLATE#[*]#LAST# turns, doing %d #SLATE#[*, phys]#LAST# #LIGHT_RED#fire burn#LAST# damage each turn.
+Every enemy killed in the initial blast will reduce the cooldown of Raging Rush by 1.]])
+			:format(dd(self, 'FIRE', get(t.damage, self, t)),
+							get(t.radius, self, t),
+							get(t.duration, self, t),
+							dd(self, 'FIRE', get(t.ground_damage, self ,t)))
 	end,}

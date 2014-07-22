@@ -16,4 +16,12 @@
 
 local _M = loadPrevious(...)
 
+local changeLevelReal = _M.changeLevelReal
+function _M:changeLevelReal(lev, zone, params)
+	local burrow = self.player:isTalentActive('T_WEIRD_BURROW')
+	if burrow then self.player:forceUseTalent('T_WEIRD_BURROW', {no_energy = true, ignore_cd = true,}) end
+	changeLevelReal(self, lev, zone, params)
+	if burrow then self.player:forceUseTalent('T_WEIRD_BURROW', {no_energy = true, ignore_cd = true,}) end
+end
+
 return _M

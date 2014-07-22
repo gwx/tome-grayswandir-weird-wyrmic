@@ -34,6 +34,7 @@ newBirthDescriptor {
 	stats = { str=4, wil=4, con=1, },
 	talents_types = {
 		['wild-gift/draconic-form'] = {true, 0.3,},
+		['wild-gift/draconic-might'] = {true, 0.3,},
 		['wild-gift/fire-aspect'] = {true, 0.3,},
 		['wild-gift/ice-aspect'] = {true, 0.3,},
 		['wild-gift/storm-aspect'] = {true, 0.3,},

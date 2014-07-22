@@ -14,6 +14,7 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+local damage_type = require 'engine.DamageType'
 local _M = loadPrevious(...)
 
 -- Generic Scaling Function
@@ -122,7 +123,7 @@ function _M:scale(t)
 
 		if type(x) == 'table' then x = x.id end
 
- 		if x:sub(1, 2) == 'T_' then score = (self:getTalentLevel(x) - 1) * 25
+ 		if type(x) == 'string' and x:sub(1, 2) == 'T_' then score = (self:getTalentLevel(x) - 1) * 25
 		elseif x == 'str' then score = self:getStr()
 		elseif x == 'dex' then score = self:getDex()
 		elseif x == 'con' then score = self:getCon()
@@ -145,7 +146,7 @@ function _M:scale(t)
 
 	local result
 	local low = t.low or 0
-	local high = t.high or (t.limit and (t.limit - low) * 0.5 + low) or t.low + 1
+	local high = t.high or (t.limit and (t.limit - low) * 0.5 + low) or low + 1
 	local curve = t.curve or 0.75
 	if score <= 100 or not t.limit then
 		local diff = high - low

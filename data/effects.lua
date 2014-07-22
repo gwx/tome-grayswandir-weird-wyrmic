@@ -14,6 +14,8 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+require 'grayswandir.actor'
+
 local talents = require 'engine.interface.ActorTalents'
 local dd = talents.damDesc
 local particles = require 'engine.Particles'
@@ -23,15 +25,15 @@ newEffect {
 	desc = 'Burning Rage',
 	long_desc = function(self, eff)
 		local bonuses = ''
-		if eff.bonuses then
+		if eff.temps.combat_mentalresist then
 			bonuses = ('\nTarget also gets %d mental save, %d%% combat speed and %d%% confusion immunity.')
-				:format(eff.bonuses.combat_mentalresist,
-								eff.bonuses.combat_physspeed * 100,
-								eff.bonuses.confusion_immune * 100)
+				:format(eff.temps.combat_mentalresist,
+								eff.temps.combat_physspeed * 100,
+								eff.temps.confusion_immune * 100)
 		end
 		return ([[Target is burning with rage, giving them %d extra #LIGHT_RED#fire burn#LAST# damage on melee hits but reducing sight radius by %d.%s]])
-			:format(dd(eff.src, 'FIRE', eff.project),
-								-eff.sight,
+			:format(dd(eff.src, 'FIRE', eff.temps.melee_project.FIREBURN),
+								-eff.temps.sight,
 						 bonuses)
 	end,
 	type = 'mental',
@@ -45,16 +47,10 @@ newEffect {
 		return '#Target# is no longer in a #ORANGE#Burning Rage#LAST#!', '-Burning Rage'
 	end,
 	activate = function(self, eff)
-		self:effectTemporaryValue(eff, 'sight', eff.sight)
-		self:effectTemporaryValue(eff, 'melee_project', {FIREBURN = eff.project,})
-		self.bonuses = {}
-		for stat, amount in pairs(self.burning_rage_bonuses or {}) do
-			self.bonuses.stat = amount
-			self:effectTemporaryValue(eff, stat, amount)
-		end
+		self:autoTemporaryValues(eff)
 	end,
 	on_timeout = function(self, eff)
-		if self:isTalentActive('T_WEIRD_FOCUSED_FURY') then
+		if self:isTalentActive 'T_WEIRD_FOCUSED_FURY' then
 			local equilibrium = self:callTalent('T_WEIRD_FOCUSED_FURY', 'equilibrium_cost')
 			local threshold = self:callTalent('T_WEIRD_FOCUSED_FURY', 'life_percent') * self.max_life
 			if (eff.damage_taken or 0) >= threshold then
@@ -73,16 +69,11 @@ newEffect {
 	name = 'WEIRD_FROZEN_ARMOUR',
 	desc = 'Frozen Armour',
 	long_desc = function(self, eff)
-		local def = ''
-		if eff.bonuses and eff.bonuses.combat_def then
-			def = (', %d defense,'):format(eff.bonuses.combat_def * eff.stacks)
-		end
-		return ([[Currently at %d stacks out of %d. Target gains %d armour%s and %d cold retaliation damage.
+		return ([[Currently at %d stacks out of %d. Target gains %d armour and %d cold retaliation damage.
 Target will lose a stack whenever they move, or 2 if currently at 4 or more stacks.]])
 			:format(eff.stacks,
 							eff.max_stacks,
 							eff.combat_armor * eff.stacks,
-							def,
 							dd(self, 'COLD', eff.retaliation * eff.stacks))
 	end,
 	type = 'physical',
@@ -92,8 +83,7 @@ Target will lose a stack whenever they move, or 2 if currently at 4 or more stac
 	parameters = {stacks = 1,
 								max_stacks = 5,
 								combat_armor = 3,
-								retaliation = 5,
-								combat_def = 0,},
+								retaliation = 5,},
 	on_gain = function(self, eff)
 		return '#Target# is encased in Frozen Armour!', '+Frozen Armour'
 	end,
@@ -102,7 +92,7 @@ Target will lose a stack whenever they move, or 2 if currently at 4 or more stac
 	end,
 	decrease = 0, no_remove = true,
 	damage_feedback = function(self, eff, src, value)
-		if self:knowTalent('T_WEIRD_RIGID_BODY') then
+		if self:knowTalent 'T_WEIRD_RIGID_BODY' then
 			local power = self:callTalent('T_WEIRD_RIGID_BODY', 'retaliation_percent')
 			power = power * 100 * value / self.max_life
 			if rng.percent(power) then
@@ -119,12 +109,7 @@ Target will lose a stack whenever they move, or 2 if currently at 4 or more stac
 	end,
 	callbackOnMove = function(self, eff, moved, force, ox, oy)
 		if ox ~= self.x or oy ~= self.y then
-			if eff.__tmpvals then
-				for i = 1, #eff.__tmpvals do
-					self:removeTemporaryValue(eff.__tmpvals[i][1], eff.__tmpvals[i][2])
-				end
-			end
-			eff.__tmpvals = nil
+			self:autoTemporaryValuesRemove(eff)
 
 			eff.moved = true
 			if eff.stacks >= 4 then
@@ -140,12 +125,7 @@ Target will lose a stack whenever they move, or 2 if currently at 4 or more stac
 		end
 	end,
 	add_stacks = function(self, eff, stacks)
-		if eff.__tmpvals then
-			for i = 1, #eff.__tmpvals do
-				self:removeTemporaryValue(eff.__tmpvals[i][1], eff.__tmpvals[i][2])
-			end
-		end
-
+		self:autoTemporaryValuesRemove(eff)
 		eff.stacks = eff.stacks + stacks
 		self.tempeffect_def.EFF_WEIRD_FROZEN_ARMOUR.activate(self, eff)
 	end,
@@ -160,12 +140,7 @@ Target will lose a stack whenever they move, or 2 if currently at 4 or more stac
 		end
 	end,
 	on_merge = function(self, old, new)
-		if old.__tmpvals then
-			for i = 1, #old.__tmpvals do
-				self:removeTemporaryValue(old.__tmpvals[i][1], old.__tmpvals[i][2])
-			end
-		end
-
+		self:autoTemporaryValuesRemove(old)
 		new.max_stacks = math.max(old.max_stacks, new.max_stacks)
 		new.stacks = old.stacks + new.stacks
 		self.tempeffect_def.EFF_WEIRD_FROZEN_ARMOUR.activate(self, new)
@@ -195,8 +170,7 @@ newEffect {
 			daze = ('\nAll #ROYAL_BLUE#lightning#LAST# damage you do will #VIOLET#daze#LAST# #SLATE#[mind vs. phys, stun]#LAST# for %d turns.')
 				:format(eff.daze)
 		end
-		return ([[Target is moving incredibly quickly, giving them %d%% extra movement speed and %d%% evasion chance.%s
-Any action other than movement will break this effect.]])
+		return ([[Target is moving incredibly quickly, giving them %d%% extra movement speed and %d%% evasion chance.%s]])
 			:format(eff.speed * 100, eff.evasion, daze)
 	end,
 	type = 'physical',
@@ -214,26 +188,6 @@ Any action other than movement will break this effect.]])
 		self:effectTemporaryValue(eff, 'movement_speed', eff.speed)
 		self:effectTemporaryValue(eff, 'evasion', eff.evasion)
 		self:effectTemporaryValue(eff, 'weird_lightning_daze', eff.daze)
-	end,}
-
-newEffect {
-	name = 'WEIRD_PURE_LIGHTNING',
-	desc = 'Pure Lightning',
-	long_desc = function(self, eff)
-		return 'Once per turn, when hit you will avoid the damage and move to an adjacent square.'
-	end,
-	type = 'physical',
-	subtype = {speed = true, lightning = true,},
-	status = 'beneficial',
-	parameters = {},
-	on_gain = function(self, eff)
-		return '#Target# turns into #ROYAL_BLUE#Pure Lightning#LAST#!', '+Pure Lightning'
-	end,
-	on_lose = function(self, eff)
-		return '#Target# is no longer #ROYAL_BLUE#Pure Lightning#LAST#!', '-Pure Lightning'
-	end,
-	activate = function(self, eff)
-		self:effectTemporaryValue(eff, 'phase_shift', 1)
 	end,}
 
 newEffect {
@@ -270,17 +224,39 @@ newEffect {
 	end,}
 
 newEffect {
-	name = 'WEIRD_SWALLOW', image = 'talents/weird_swallow.png',
-	desc = 'Swallow',
+	name = 'WEIRD_PURE_LIGHTNING',
+	desc = 'Pure Lightning',
 	long_desc = function(self, eff)
-		return ([[Currently at %d stacks out of %d. Target gains %d strength and %d physical save.]])
-			:format(eff.stacks,
-							eff.max_stacks,
-							eff.strength * eff.stacks,
-							eff.combat_physresist * eff.stacks)
+		return 'Once per turn, when hit you will avoid the damage and move to an adjacent square.'
 	end,
 	type = 'physical',
-	subtype = {nature = true, earth = true,},
+	subtype = {speed = true, lightning = true,},
+	status = 'beneficial',
+	parameters = {},
+	on_gain = function(self, eff)
+		return '#Target# turns into #ROYAL_BLUE#Pure Lightning#LAST#!', '+Pure Lightning'
+	end,
+	on_lose = function(self, eff)
+		return '#Target# is no longer #ROYAL_BLUE#Pure Lightning#LAST#!', '-Pure Lightning'
+	end,
+	activate = function(self, eff)
+		self:effectTemporaryValue(eff, 'phase_shift', 1)
+	end,}
+
+newEffect {
+	name = 'WEIRD_APPETITE',
+	desc = 'Appetite',
+	long_desc = function(self, eff)
+		return ([[Currently at %d stacks out of %d. Each stack will last for %d turns. Target gains %d physical power, %d%% healing modifier, and %.2f equilibrium regeneration. When the timer runs out, a single stack will be lost.]])
+			:format(eff.stacks,
+							eff.max_stacks,
+							eff.original_duration,
+							eff.power * eff.stacks,
+							eff.healmod * eff.stacks,
+							eff.equi_regen * eff.stacks)
+	end,
+	type = 'physical',
+	subtype = {nature = true, drake = true,},
 	status = 'beneficial',
 	charges = function(self, eff) return eff.stacks end,
 	parameters = {stacks = 1,
@@ -295,33 +271,20 @@ newEffect {
 		end
 
 		eff.stacks = eff.stacks + stacks
-		self.tempeffect_def.EFF_WEIRD_SWALLOW.activate(self, eff)
+		self.tempeffect_def.EFF_WEIRD_APPETITE.activate(self, eff)
 	end,
 	activate = function(self, eff)
 		if eff.stacks > eff.max_stacks then eff.stacks = eff.max_stacks end
-		self:effectTemporaryValue(eff, 'inc_stats', {[self.STAT_STR] = eff.strength,})
-		self:effectTemporaryValue(eff, 'combat_physresist', eff.combat_physresist)
-		self.bonuses = {}
-		for stat, amount in pairs(self.swallow_bonuses or {}) do
-			self.bonuses.stat = amount
-			self:effectTemporaryValue(eff, stat, amount * eff.stacks)
-		end
+		self:effectTemporaryValue(eff, 'combat_dam', eff.power * eff.stacks)
+		self:effectTemporaryValue(eff, 'healing_factor', eff.healmod * 0.01 * eff.stacks)
+		self:effectTemporaryValue(eff, 'equilibrium_regen', -eff.equi_regen * eff.stacks)
 	end,
 	deactivate = function(self, eff)
 		eff.__tmpvals = nil
-		if self:isTalentActive('T_WEIRD_APPETITE') then
-			eff.stacks = eff.stacks - 1
-			if eff.stacks == 0 then return end
-			local equilibrium = self:callTalent('T_WEIRD_APPETITE', 'equilibrium_cost')
-			self:incEquilibrium(equilibrium)
-			if self:equilibriumChance() then
-				local duration = self:callTalent('T_WEIRD_SWALLOW', 'duration')
-				local later = function() self:setEffect('EFF_WEIRD_SWALLOW', duration, eff) end
-				game:onTickEnd(later)
-			else
-				self:forceUseTalent('T_WEIRD_APPETITE', {no_energy = true,})
-			end
-		end
+		eff.stacks = eff.stacks - 1
+		if eff.stacks == 0 then return end
+		local later = function() self:setEffect('EFF_WEIRD_APPETITE', eff.original_duration, eff) end
+		game:onTickEnd(later)
 	end,
 	on_merge = function(self, old, new)
 		if old.__tmpvals then
@@ -330,9 +293,9 @@ newEffect {
 			end
 		end
 
-		new.max_stacks = math.max(old.max_stacks, new.max_stacks)
-		new.stacks = old.stacks + new.stacks
-		self.tempeffect_def.EFF_WEIRD_SWALLOW.activate(self, new)
+		new.max_stacks = math.max(old.stacks, new.max_stacks)
+		new.stacks = math.min(new.max_stacks, old.stacks + new.stacks)
+		self.tempeffect_def.EFF_WEIRD_APPETITE.activate(self, new)
 		return new
 	end,}
 
@@ -374,6 +337,14 @@ newEffect {
 		return '#Target# is no longer #GRE#Partially Blinded#LAST#.', '-Partially Blinded'
 	end,
 	activate = function(self, eff)
+		-- If target is already blinded, instead increase the duration up to ours.
+		local blind = self:hasEffect('EFF_BLINDED')
+		if blind then
+			blind.dur = math.max(blind.dur, eff.dur)
+			self:removeEffect('EFF_WEIRD_PARTIALLY_BLINDED')
+			return
+		end
+
 		local immune = self.blind_immune or 0
 		if immune >= 1 then
 			self:removeEffect('EFF_WEIRD_PARTIALLY_BLINDED')
@@ -381,4 +352,58 @@ newEffect {
 		end
 
 		self:effectTemporaryValue(eff, 'combat_atk', -eff.accuracy * (1 - immune))
+	end,}
+
+newEffect {
+	name = 'WEIRD_SAND_BARRIER', image = 'talents/weird_sandblaster.png',
+	desc = 'Sand Barrier',
+	long_desc = function(self, eff)
+		return ([[Target gains %d defense and %d%% physical resistance.]])
+			:format(eff.defense, eff.resist)
+	end,
+	type = 'physical',
+	subtype = {nature = true, earth = true,},
+	status = 'beneficial',
+	parameters = {defense = 10, resist = 10,},
+	activate = function(self, eff)
+		self:effectTemporaryValue(eff, 'combat_def', eff.defense)
+		self:effectTemporaryValue(eff, 'resists', {PHYSICAL = eff.resist,})
+		eff.particle = self:addParticles(particles.new('sandy_shield', 1))
+	end,
+	deactivate = function(self, eff)
+		self:removeParticles(eff.particle)
+	end,}
+
+newEffect {
+	name = 'WEIRD_ARMOR_REND', image = 'talents/weird_rending_claws.png',
+	desc = 'Rent Armour',
+	long_desc = function(self, eff)
+		return ([[Target has their armour rent, decreasing it by %d.]])
+			:format(eff.armor)
+	end,
+	type = 'physical',
+	subtype = {earth = true, blind = true,},
+	status = 'detrimental',
+	parameters = {accuracy = 10,},
+	on_gain = function(self, eff)
+		return '#Target# has their armour rent!', '+Rent Armour'
+	end,
+	on_lose = function(self, eff)
+		return '#Target# no longer has their armour rent.', '-Rent Armour'
+	end,
+	activate = function(self, eff)
+		eff.armor = math.min(eff.armor_per, eff.armor_max)
+		eff.armor_id = self:addTemporaryValue('combat_armor', -eff.armor)
+	end,
+	deactivate = function(self, eff)
+		self:removeTemporaryValue('combat_armor', eff.armor_id)
+	end,
+	on_merge = function(self, old, new)
+		self:removeTemporaryValue('combat_armor', old.armor_id)
+		new.dur = math.max(old.dur, new.dur)
+		new.armor = math.max(
+			old.armor,
+			math.min(new.armor_max, old.armor + new.armor_per))
+		new.armor_id = self:addTemporaryValue('combat_armor', -new.armor)
+		return new
 	end,}

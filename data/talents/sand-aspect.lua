@@ -39,29 +39,20 @@ newTalent {
 	points = 5,
 	equilibrium = 2,
 	no_npc_use = true,
-	cooldown = function(self, t)
-		local cd = 14
-		if self:knowTalent('T_WEIRD_SAND_ASPECT') then
-			cd = cd - self:callTalent('T_WEIRD_SAND_ASPECT', 'cooldown_reduce')
-		end
-		return cd
-	end,
+	cooldown = 12,
 	range = 1,
-	damage = function(self, t) return self:scale {low = 0.9, high = 1.4, t,} end,
+	weapon_mult = function(self, t) return self:scale {low = 0.9, high = 1.4, t,} end,
 	project = function(self, t) return self:scale {low = 10, high = 80, 'phys', after = 'damage',} end,
-	accuracy = function(self, t) return self:scale {low = 10, high = 40, t,} end,
-	debuff_duration = function(self, t)
-		return self:scale {low = 3, high = 7, t, after = 'floor',}
-	end,
 	buff_duration = function(self, t)
-		local duration = 10
+		local duration = 6
 		if self:knowTalent('T_WEIRD_BURROW') then
 			duration = duration + self:callTalent('T_WEIRD_BURROW', 'barrier_duration')
 		end
 		return duration
 	end,
-	defense = function(self, t) return self:scale {low = 5, high = 30, t, 'str',} end,
-	resist = function(self, t) return self:scale {low = 0, high = 20, t, 'str',} end,
+	no_energy = 'fake',
+	defense = function(self, t) return self:scale {low = 5, high = 30, t, 'phys',} end,
+	resist = function(self, t) return self:scale {low = 0, high = 22, t, 'phys',} end,
 	target = function(self, t)
 		return {type = 'hit', talent = t, range = get(t.range, self, t),}
 	end,
@@ -77,7 +68,7 @@ newTalent {
 
 		local hits = 0
 		if actor then
-			self:attackTarget(actor, 'PHYSICAL', get(t.damage, self, t), true)
+			self:attackTarget(actor, 'PHYSICAL', get(t.weapon_mult, self, t))
 			hits = hits + 1
 		end
 
@@ -90,10 +81,6 @@ newTalent {
 			if actor then
 				hits = hits + 1
 				damage_type:get('PHYSICAL').projector(self, x2, y2, 'PHYSICAL', project)
-				if actor:canBe 'blind' then
-					actor:setEffect('EFF_WEIRD_PARTIALLY_BLINDED', get(t.debuff_duration, self, t), {
-														accuracy = get(t.accuracy, self, t)})
-				end
 			end
 		end
 
@@ -112,12 +99,10 @@ newTalent {
 		return true
 	end,
 	info = function(self, t)
-		return ([[Powerfully swing your weapon into the ground and then into an adjacent target for %d%% physical damage. This will kick up sand, hitting the target and the 3 spaces behind it for %d #SLATE#[phys]#LAST# physical damage, and attempting to #GREY#partially blind#LAST# #SLATE#[phys vs phys]#LAST# for %d turns, reducing their accuracy by %d #SLATE#[reduced by blind immunity]#LAST#.
-If you hit anything, the kicked up sand will form a #LIGHT_UMBER#Sand Barrier#LAST# around you, giving you %d #SLATE#[str]#LAST# defense and %d%% #SLATE#[str]#LAST# physical resistance for %d turns.]])
-			:format(get(t.damage, self, t),
+		return ([[Powerfully swing your weapon into the ground and then into an adjacent target for %d%% #SLATE#[*]#LAST# weapon physical damage. This will kick up sand, hitting the target and the 3 spaces behind it for %d #SLATE#[* phys]#LAST# physical damage.
+If you hit anything, the kicked up sand will form a #LIGHT_UMBER#Sand Barrier#LAST# around you, giving you %d #SLATE#[*, phys]#LAST# defense and %d%% #SLATE#[*, phys]#LAST# physical resistance for %d turns.]])
+			:format(get(t.weapon_mult, self, t) * 100,
 							dd(self, 'PHYSICAL', get(t.project, self, t)),
-							get(t.debuff_duration, self, t),
-							get(t.accuracy, self, t),
 							get(t.defense, self, t),
 							get(t.resist, self, t),
 							get(t.buff_duration, self, t))
@@ -138,7 +123,7 @@ newTalent {
 		return self:scale {low = 9, high = 6, limit = 3, t,}
 	end,
 	barrier_duration = function(self, t)
-		return self:scale {low = 0, high = 4, t, after = 'floor'}
+		return self:scale {low = 0, high = 6, t, after = 'floor'}
 	end,
 	activate = function(self, t)
 		local p = {}
@@ -150,145 +135,73 @@ newTalent {
 	end,
 	deactivate = function(self, t, p) return true end,
 	info = function(self, t)
-		return ([[While active you may burrow through diggable walls, costing you %.2f #00FF74#equilibrium#LAST# per wall. After burrowing, you must pass an equilibrium check to keep this sustained.
-This will also passively increase the duration of your #LIGHT_UMBER#Sand Barrier#LAST# by %d.]])
+		return ([[While active you may burrow through diggable walls, costing you %.2f #SLATE#[*]#LAST# #00FF74#equilibrium#LAST# per wall. After burrowing, you must pass an #00FF74#equilibrium#LAST# check to keep this sustained.
+This will also passively increase the duration of your #LIGHT_UMBER#Sand Barrier#LAST# by %d #SLATE#[*]#LAST#.]])
 			:format(get(t.equilibrium_cost, self, t),
 							get(t.barrier_duration, self, t))
 	end,}
 
---[==[
 newTalent {
-	name = 'Swallow', short_name = 'WEIRD_SWALLOW',
-	type = {'wild-gift/sand-aspect', 1,},
-	require = make_require(1),
+	name = 'Sand Vortex', short_name = 'WEIRD_SAND_VORTEX',
+	type = {'wild-gift/sand-aspect', 3,},
+	require = make_require(3),
 	points = 5,
-	equilibrium = 9,
-	no_npc_use = true,
-	cooldown = function(self, t)
-		local cd = 17
-		if self:knowTalent('T_WEIRD_SAND_ASPECT') then
-			cd = cd - self:callTalent('T_WEIRD_SAND_ASPECT', 'cooldown_reduce')
-		end
-		return cd
+	equilibrium = 8,
+	cooldown = 16,
+	range = 0,
+	is_mind = true,
+	radius = function(self, t)
+		return self:scale {low = 3, high = 7, limit = 10, t, after = 'floor',}
 	end,
-	range = 1,
-	damage = function(self, t) return self:wwScale {min = 1.4, max = 2.3, talent = t,} end,
-	swallow_percent = function(self, t, target)
-		local mult = 1
-		if target then
-			mult = ((self.size_category or 3) + self.rank) / ((target.size_category or 3) + target.rank)
-		end
-		return self:wwScale {min = 10, max = 30, limit = 50, talent = t, stat = 'con', mult = mult,}
+	project = function(self, t) return self:scale {low = 40, high = 350, t, 'phys', after = 'damage',} end,
+	blind_duration = function(self, t) return self:scale {low = 3, high = 7, limit = 10, t, after = 'floor',} end,
+	partial_blind = function(self, t) return self:scale {low = 10, high = 70, t, 'mind'} end,
+	inflict_blind_param = function(self, t)
+		return {duration = get(t.blind_duration, self, t),
+						duration_scale = ' #SLATE#[*]#LAST#',
+						accuracy = get(t.partial_blind, self, t),
+						accuracy_scale = ' #SLATE#[*, mind]#LAST#',}
 	end,
-	duration = function(self, t)
-		local duration = self:wwScale {min = 2, max = 10, talent = t,}
-		if self:knowTalent('T_WEIRD_APPETITE') then
-			duration = duration + self:callTalent('T_WEIRD_APPETITE', 'duration')
-		end
-		return math.floor(duration)
-	end,
-	strength = function(self, t) return self:wwScale {min = 0.5, max = 3, stat = 'wil',} end,
-	combat_physresist = function(self, t) return self:wwScale {min = 0.5, max = 3, stat = 'wil',} end,
-	max_stacks = function(self, t)
-		local stacks = 5
-		if self:knowTalent('T_WEIRD_APPETITE') then
-			stacks = stacks + self:callTalent('T_WEIRD_APPETITE', 'max_stacks')
-		end
-		return stacks
-	end,
-	tactical = {ATTACK = 2,},
 	target = function(self, t)
-		return {type = 'hit', talent = t, range = get(t.range, self, t),}
+		return {type = 'ball', talent = t, selffire = false,
+						range = get(t.range, self, t),
+						radius = get(t.radius, self, t),}
 	end,
 	on_learn = Talents.recalc_draconic_form,
 	on_unlearn = Talents.recalc_draconic_form,
 	action = function(self, t)
 		local tg = get(t.target, self, t)
-		local x, y, actor = self:getTarget(tg)
-		if not x or not y or not actor then return end
-		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
-		game.logSeen(self, ('%s tries to #UMBER#swallow#LAST# %s!'):format(self.name:capitalize(), actor.name))
+		local hits = 0
+		local damage = self:mindCrit(get(t.project, self, t))
+		local barrier = self:hasEffect('EFF_WEIRD_SAND_BARRIER')
+		local blind_param = get(t.inflict_blind_param, self, t)
+		local projector = function(x, y)
+			local actor = game.level.map(x, y, map.ACTOR)
+			if not actor then return end
+			hits = hits + 1
+			damage_type:get('PHYSICAL').projector(self, x, y, 'PHYSICAL', damage)
+			if barrier then self:inflict('blind', actor, blind_param) end
+			actor:pull(self.x, self.y, core.fov.distance(self.x, self.y, actor.x, actor.y) - 1)
+		end
+		self:project(tg, self.x, self.y, projector)
 
-		local damage = get(t.damage, self, t)
-		if not self:attackTarget(actor, 'PHYSICAL', damage, true) then return true end
-
-		if not actor.dead and actor.life / actor.max_life > 0.05 then
-			if not rng.percent(get(t.swallow_percent, self, t, actor)) then return true end
-			if not actor:canBe('instakill') then return true end
-			if not actor:checkHit(self:combatPhysicalpower(), actor:combatPhysicalResist()) then return true end
+		if hits > 0 and barrier then
+			barrier.dur = math.max(barrier.dur, self:callTalent('T_WEIRD_SANDBLASTER', 'buff_duration'))
 		end
 
-		if not actor.dead then actor:die(self) end
-		-- world:gainAchievement('EAT_BOSSES', self, actor)
+		-- Sand Breath particles.
+		game.level.map:particleEmitter(self.x, self.y, tg.radius, 'weird_sandstorm', {radius = tg.radius})
+		game:playSoundNear(self, 'talents/cloud')
 
-		-- Heals (stolen from original)
-		self:incEquilibrium(-actor.level - 5)
-		self:attr('allow_on_heal', 1)
-		self:heal(actor.level * 2 + 5, actor)
-		if core.shader.active(4) then
-			self:addParticles(Particles.new('shader_shield_temp', 1, {toback=true ,size_factor=1.5, y=-0.3, img='healgreen', life=25}, {type='healing', time_factor=2000, beamsCount=20, noup=2.0}))
-			self:addParticles(Particles.new('shader_shield_temp', 1, {toback=false,size_factor=1.5, y=-0.3, img='healgreen', life=25}, {type='healing', time_factor=2000, beamsCount=20, noup=1.0}))
-		end
-		self:attr('allow_on_heal', -1)
-
-		local duration = get(t.duration, self, t)
-		self:setEffect('EFF_WEIRD_SWALLOW', duration, {
-										 stacks = math.floor(actor.rank),
-										 max_stacks = get(t.max_stacks, self, t),
-										 strength = get(t.strength, self, t),
-										 combat_physresist = get(t.combat_physresist, self, t),})
 		return true
 	end,
 	info = function(self, t)
-		return ([[Hit an adjacent target for %d%% physical damage. If this hits and kills it or brings it below %d%% #SLATE#[con, relative rank and size]#LAST# life, attempt to #UMBER#swallow#LAST# #SLATE#[phys vs. phys, auto below 5%% life]#LAST# it, recovering life and equilibrium based on its level.
-This will also give you the a stack of the #UMBER#Swallow#LAST# buff for each rank of the enemy, up to your maximum of %d stacks. You will get %.1f #SLATE#[wil]#LAST# strength and %.1f #SLATE#[wil]#LAST# physical save per stack. #UMBER#Swallow#LAST# will last for %d turns, which will refresh every time it is applied.]])
-			:format(get(t.damage, self, t) * 100,
-							get(t.swallow_percent, self, t),
-							get(t.max_stacks, self, t),
-							get(t.strength, self, t),
-							get(t.combat_physresist, self, t),
-							get(t.duration, self, t))
+		return ([[Create a vortex of sand around you in radius %d #SLATE#[*]#LAST#, pulling targets towards you, dealing %d #SLATE#[*, phys, mind crit]#LAST# physical damage. If your #LIGHT_UMBER#Sand Barrier#LAST# is active, then you will also %s
+If you hit anything the duration of your #LIGHT_UMBER#Sand Barrier#LAST# will be reset to full.]])
+			:format(get(t.radius, self, t),
+							dd(self, 'PHYSICAL', get(t.project, self, t)),
+							self:describeInflict('blind', get(t.inflict_blind_param, self, t)))
 	end,}
-
-newTalent {
-	name = 'Appetite', short_name = 'WEIRD_APPETITE',
-	type = {'wild-gift/sand-aspect', 2,},
-	require = make_require(2),
-	points = 5,
-	mode = 'sustained',
-	no_energy = true,
-	cooldown = 8,
-	on_learn = Talents.recalc_draconic_form,
-	on_unlearn = Talents.recalc_draconic_form,
-	sustain_equilibrium = 20,
-	duration = function(self, t)
-		return self:wwScale {min = 0, max = 7, talent = t,}
-	end,
-	equilibrium_cost = function(self, t)
-		return self:wwScale {min = 4, max = 1, stat = 'str', round = 'ceil',}
-	end,
-	max_stacks = function(self, t)
-		return self:wwScale {min = 1, max = 5, talent = t,}
-	end,
-	bite_chance = function(self, t)
-		return self:wwScale {min = 30, max = 70, stat = 'wil',}
-	end,
-	bite_damage = function(self, t)
-		return self:wwScale {min = 0.6, max = 0.9, talent = t,}
-	end,
-	tactical = {BUFF = 2,},
-	activate = function(self, t) return {} end,
-	deactivate = function(self, t, p) return true end,
-	info = function(self, t)
-		return ([[The more you eat, the more your hunger grows. This will passively enhance your #UMBER#Swallow#LAST#, increasing the duration by %d. It will increase the maximum number of stacks by %d. You will now also get a %d%% #SLATE#[wil]#LAST# chance to deal an extra bite attack for %d%% weapon damage on each hit.
-While active, whenever your #UMBER#Swallow#LAST# runs out of time, your equilibrium will increase by %d #SLATE#[str]#LAST# and your #UMBER#Swallow#LAST# will lose 1 stack and have its duration reset, provided you pass an equilibrium check.]])
-			:format(get(t.duration, self, t),
-							get(t.max_stacks, self, t),
-							get(t.bite_chance, self, t),
-							get(t.bite_damage, self, t) * 100,
-							get(t.equilibrium_cost, self, t))
-	end,}
-
 
 newTalent {
 	name = 'Sand Aspect', short_name = 'WEIRD_SAND_ASPECT',
@@ -299,38 +212,29 @@ newTalent {
 	on_learn = Talents.recalc_draconic_form,
 	on_unlearn = Talents.recalc_draconic_form,
 	inc_damage = function(self, t)
-		return self:wwScale {min = 5, max = 35, talent = t, stat = 'wil',} * 0.7
+		return self:scale {low = 5, high = 25, t,} * 0.6
 	end,
 	resists_pen = function(self, t)
-		return self:wwScale {min = 3, max = 10, talent = t,} * 0.7
+		return self:scale {low = 0, high = 12, t,} -- * 0.6
 	end,
 	equilibrium_gain = function(self, t)
-		return self:wwScale {min = 0.2, max = 2, talent = t,} * 0.7
-	end,
-	cooldown_reduce = function(self, t)
-		return self:wwScale {min = 2, max = 9, talent = t, round = 'floor',}
+		return self:scale {low = 0.2, high = 2, t,} * 0.6
 	end,
 	passives = function(self, t, p)
-		self:effectTemporaryValue(
-			p, 'equilibrium_on_damage', {PHYSICAL = get(t.equilibrium_gain, self, t),})
-		self:effectTemporaryValue(
-			p, 'inc_damage', {PHYSICAL = get(t.inc_damage, self, t),})
-		self:effectTemporaryValue(
-			p, 'resists_pen', {PHYSICAL = get(t.resists_pen, self, t),})
-	end,
-	callbackOnStatChange = function(self, t, stat, value)
-		if stat == self.STAT_STR then self:updateTalentPassives(t) end
+		self:autoTemporaryValues(
+			p, {
+				equilibrium_on_damage = {PHYSICAL = get(t.equilibrium_gain, self, t),},
+				inc_damage = {PHYSICAL = get(t.inc_damage, self, t),},
+				resists_pen = {PHYSICAL = get(t.resists_pen, self, t),},})
 	end,
 	activate = function(self, t) return {} end,
 	deactivate = function(self, t, p) return true end,
 	info = function(self, t)
-		return ([[You have mastered your ability to manipulate sand as a dragon would. You gain %d%% #SLATE#[wil]#LAST# to all physical damage done, and %d%% physical resistance piercing. You regain %.1f equilibrium on any turn in which you deal physical damage.
-This also reduces the cooldown of Swallow by %d.
+		return ([[You have mastered your ability to manipulate sand as a dragon would. You gain %d%% #SLATE#[*]#LAST# to all physical damage done, and %d%% #SLATE#[*]#LAST# physical resistance piercing. You recover %.1f #SLATE#[*]#LAST# #00FF74#equilibrium#LAST# on any turn in which you deal physical damage.
 Points in this talent count double for the purposes of draconic form talents.]])
 			:format(get(t.inc_damage, self, t),
 							get(t.resists_pen, self, t),
-							get(t.equilibrium_gain, self, t),
-							get(t.cooldown_reduce, self, t))
+							get(t.equilibrium_gain, self, t))
 	end,}
 
 newTalent {
@@ -341,8 +245,16 @@ newTalent {
 	cooldown = function(self, t)
 		return self:callTalent('T_WEIRD_DRACONIC_CLAW', 'shared_cooldown')
 	end,
-	damage = function(self, t) return self:wwScale {min = 1.0, max = 1.8, talent = t,} end,
-	duration = function(self, t) return self:wwScale {min = 1, max = 6, talent = t,} end,
+	weapon_mult = function(self, t) return self:scale {low = 1.0, high = 1.8, t,} end,
+	duration = function(self, t) return self:scale {low = 2, high = 5, limit = 8, t,} end,
+	accuracy = function(self, t) return self:scale {low = 10, high = 60, t, 'phys',} end,
+	blind_param = function(self, t)
+		return {duration = get(t.duration, self, t),
+						duration_scale = ' #SLATE#[*, mind crit]#LAST#',
+						accuracy = get(t.accuracy, self, t),
+						accuracy_scale = ' #SLATE#[*, phys]#LAST#',}
+	end,
+	no_energy = 'fake',
 	requires_target = true,
 	tactical = {ATTACK = 2, DISABLE = 1,},
 	range = 1,
@@ -355,12 +267,10 @@ newTalent {
 		if not x or not y or not actor then return end
 		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
 
-		local damage = get(t.damage, self, t)
+		local weapon_mult = get(t.weapon_mult, self, t)
 		local duration = self:mindCrit(get(t.duration, self, t))
-		if self:attackTarget(actor, 'PHYSICAL', damage, true) then
-			if actor:canBe('blind') then
-				actor:setEffect('EFF_BLINDED', duration, {apply_power = self:combatMindpower(),})
-			end
+		if self:attackTarget(actor, 'PHYSICAL', weapon_mult) then
+			self:inflict('blind', actor, get(t.blind_param, self, t))
 		end
 
 		Talents.cooldown_group(self, t)
@@ -368,9 +278,9 @@ newTalent {
 		return true
 	end,
 	info = function(self, t)
-		return ([[Hit the target for %d%% weapon physical damage, and attempt to #YELLOW#blind#LAST# #SLATE#[mind vs. phys, stun]#LAST# them for %d #SLATE#[mind crit]#LAST# turns.]])
-			:format(get(t.damage, self, t) * 100,
-							get(t.duration, self, t))
+		return ([[Hit the target for %d%% #SLATE#[*]#LAST# weapon physical damage, and %s]])
+			:format(get(t.weapon_mult, self, t) * 100,
+							self:describeInflict('blind', get(t.blind_param, self, t)))
 	end,}
 
 newTalent {
@@ -378,17 +288,18 @@ newTalent {
 	type = {'wild-gift/draconic-aura', 1,}, hide = true,
 	points = 5,
 	equilibrium = 7,
+	is_mind = true,
 	cooldown = function(self, t)
 		return self:callTalent('T_WEIRD_DRACONIC_AURA', 'shared_cooldown')
 	end,
 	tactical = {ATTACKAREA = 2, DISABLE = {KNOCKBACK = 2,},},
 	range = 0,
-	radius = function(self, t) return self:wwScale {min = 2, max = 4.5, talent = t, round = 'floor'} end,
+	radius = function(self, t) return self:scale {low = 2, high = 4.5, t, after = 'floor'} end,
 	damage = function(self, t)
-		return self:wwScale {min = 0.8, max = 1.3, talent = t, scale = 'damage',}
+		return self:scale {low = 0.8, high = 1.3, t, after = 'damage',}
 	end,
 	knockback = function(self, t)
-		return self:wwScale {min = 3, max = 7, stat = 'str', round = 'ceil',}
+		return self:scale {low = 3, high = 7, 'str', after = 'ceil',}
 	end,
 	target = function(self, t)
 		return {type = 'ball', talent = t, selffire = false, no_restrict = true,
@@ -425,12 +336,19 @@ newTalent {
 	tactical = {ATTACKAREA = 2,},
 	range = 0,
 	direct_hit = true,
-	radius = function(self, t) return self:wwScale {min = 5, max = 9, talent = t,} end,
+	is_mind = true,
+	radius = function(self, t) return self:scale {low = 5, high = 9, t, after = 'floor',} end,
 	damage = function(self, t)
-		return self:wwScale {
-			min = 45, max = 450, talent = t, stat = 'str', scale = 'damage',}
+		return self:scale {low = 45, high = 450, t, 'phys', after = 'damage',}
 	end,
-	duration = function(self, t) return self:wwScale {min = 5, max = 8, stat = 'str',} end,
+	duration = function(self, t) return self:scale {low = 3, high = 6, limit = 9, t,} end,
+	accuracy = function(self, t) return self:scale {low = 10, high = 70, t, 'phys',} end,
+	blind_param = function(self, t)
+		return {duration = get(t.duration, self, t),
+						duration_scale = ' #SLATE#[*]#LAST#',
+						accuracy = get(t.accuracy, self, t),
+						accuracy_scale = ' #SLATE#[*, phys]#LAST#',}
+	end,
 	target = function(self, t)
 		return {type = 'cone', talent = t, selffire = false,
 						range = get(t.range, self, t),
@@ -442,29 +360,15 @@ newTalent {
 		if not x or not y then return end
 
 		local damage = self:mindCrit(get(t.damage, self, t))
-		local duration = get(t.duration, self, t)
-		local swallow = self:hasEffect('EFF_WEIRD_SWALLOW')
-		local kills = 0
+		local blind_param = get(t.blind_param, self, t)
 		local projector = function(x, y, tg, self)
 			local actor = game.level.map(x, y, map.ACTOR)
 			if not actor or actor.dead then return end
 
 			damage_type:get('PHYSICAL').projector(self, x, y, 'PHYSICAL', damage)
-
-			if actor.dead then
-				kills = kills + 1
-				return
-			end
-
-			if actor:canBe('blind') then
-				actor:setEffect('EFF_BLINDED', duration, {apply_power = self:combatPhysicalpower(),})
-			end
+			self:inflict('blind', actor, blind_param)
 		end
 		self:project(tg, x, y, projector)
-
-		if kills > 0 and armor then
-			self:callEffect('EFF_WEIRD_SWALLOW', 'add_stacks', kills)
-		end
 
 		game.level.map:particleEmitter(self.x, self.y, tg.radius, 'breath_earth', {
 																		 radius = tg.radius,
@@ -482,10 +386,8 @@ newTalent {
 		return true
 	end,
 	info = function(self, t)
-		return ([[Breathe sand at your foes, doing %d #SLATE#[str]#LAST# physical damage #SLATE#[mind crit]#LAST# in a radius %d cone. It will try to #YELLOW#blind#LAST# #SLATE#[phys vs. phys, blind]#LAST# anything it hits for %d #SLATE#[str]#LAST# turns.
-Every enemy killed in the initial blast will give you 1 stack of #UMBER#Swallow#LAST#, if you already have it.]])
+		return ([[Breathe sand at your foes, doing %d #SLATE#[*, phys, mind crit]#LAST# physical damage in a radius %d #SLATE#[*]#LASTE# cone. It will %s]])
 			:format(dd(self, 'PHYSICAL', get(t.damage, self, t)),
 							get(t.radius, self, t),
-							get(t.duration, self, t))
+							self:describeInflict('blind', get(t.blind_param, self, t)))
 	end,}
---]==]

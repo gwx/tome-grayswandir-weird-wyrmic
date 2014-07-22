@@ -15,14 +15,42 @@
 
 
 newInflict {
-	name = 'blind',
+	name = 'knockback',
 	desc = function(parameters)
-		return ('try to #YELLOW#blind#LAST# #SLATE#[phys vs phys, blind]#LAST# the target for %d turns. If this fails, instead try to #GREY#partially blind#LAST# #SLATE#[phys vs phys]#LAST# the target, reducing its accuracy by %d #SLATE#[phys, reduced by blind]#LAST#.')
-		:format(parameters.duration,
-						parameters.accuracy)
+		return ('#LIGHT_UMBER#knockback#LAST# #SLATE#[phys vs phys, knockback]#LAST# the target by %d%s tiles.')
+			:format(parameters.distance,
+							parameters.distance_scale or '')
 	end,
 	action = function(self, target, parameters)
-		if self:inflictEffect(target, 'BLIND', parameters.duration, nil, 'blind') then return end
+		if not parameters.recursive then
+			parameters.recursive = function(actor)
+				if actor:canBe 'knockback' then
+					game.logSeen(target, '%s is struck, they are #LIGHT_UMBER#Knocked Back#LAST# as well!',
+											 actor.name:capitalize())
+					return true
+				end
+			end
+		end
+		if target:canBe 'knockback' then
+			game.logSeen(target, '%s is #LIGHT_UMBER#Knocked Back#LAST#!', target.name:capitalize())
+			target:knockback(self.x, self.y, parameters.distance, parameters.recursive)
+		else
+			game.logSeen(target, '%s resists being #LIGHT_UMBER#Knocked Back#LAST#!', target.name:capitalize())
+		end
+	end,}
+
+newInflict {
+	name = 'blind',
+	desc = function(parameters)
+		return ('try to #YELLOW#blind#LAST# #SLATE#[phys vs phys, blind]#LAST# the target for %d%s turns. If this fails, instead try to #GREY#partially blind#LAST# #SLATE#[phys vs phys]#LAST# the target, reducing its accuracy by %d%s #SLATE#[phys, reduced by blind]#LAST#.')
+		:format(parameters.duration,
+						parameters.duration_scale or '',
+						parameters.accuracy,
+						parameters.accuracy_scale or '')
+	end,
+	action = function(self, target, parameters)
+		if self:inflictEffect(target, 'BLINDED', parameters.duration, nil, 'blind') then return end
+		game.logSeen(target, '%s resists being #YELLOW#blinded#LAST#!', target.name:capitalize())
 		self:inflictEffect(target, 'WEIRD_PARTIALLY_BLINDED', parameters.duration, nil ,nil, {
 												 accuracy = parameters.accuracy})
 	end,}
