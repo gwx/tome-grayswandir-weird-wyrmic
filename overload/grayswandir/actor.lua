@@ -32,6 +32,15 @@ function _M:projectOn(actor, type, damage)
 	return damage_type:get(type).projector(self, actor.x, actor.y, type, damage)
 end
 
+-- List all temporary effects satisfying a filter.
+function _M:filterTemporaryEffects(filter)
+	local effects = {}
+	for id, effect in pairs(self.tmp) do
+		if filter(effect) then table.insert(effects, effect) end
+	end
+	return effects
+end
+
 -- Add to actor.
 require('mod.class.Actor'):importInterface(_M)
 

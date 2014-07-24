@@ -14,19 +14,9 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+--[[
 local hook = function(self, data)
-
-	if data.hitted and not data.target.dead and not self:attr('disable_weird_bite') then
-		local swallow = self:hasEffect('EFF_WEIRD_SWALLOW')
-		if swallow and self:knowTalent('T_WEIRD_APPETITE') and
-			rng.percent(self:callTalent('T_WEIRD_APPETITE', 'bite_chance'))
-		then
-			self:attr('disable_weird_bite', 1)
-			local damage = self:callTalent('T_WEIRD_APPETITE', 'bite_damage')
-			self:attackTargetWith(data.target, data.weapon, 'PHYSICAL', damage)
-			self:attr('disable_weird_bite', -1)
-		end
-	end
 
 end
 class:bindHook('Combat:attackTargetWith', hook)
+--]]

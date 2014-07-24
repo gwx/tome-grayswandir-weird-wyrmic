@@ -253,7 +253,7 @@ newTalent {
 	points = 5,
 	mode = 'passive',
 	shared_cooldown = function(self, t)
-		return self:scale {min = 24, max = 12, limit = 8, talent = t, round = 'floor',}
+		return self:scale {low = 24, high = 12, limit = 8, t, after = 'floor',}
 	end,
 	max_life = function(self, t)
 		return self:scale {low = 20, high = 120, t, 'con',}

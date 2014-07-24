@@ -14,6 +14,8 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
+local map = require 'engine.Map'
+
 local fireburn = DamageType.dam_def.FIREBURN.projector
 DamageType.dam_def.FIREBURN.projector = function(src, x, y, type, dam)
 	if src and src.inc_burn_damage then

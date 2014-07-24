@@ -17,6 +17,7 @@
 require 'grayswandir.actor'
 
 local talents = require 'engine.interface.ActorTalents'
+local stats = require 'engine.interface.ActorStats'
 local dd = talents.damDesc
 local particles = require 'engine.Particles'
 
@@ -407,3 +408,52 @@ newEffect {
 		new.armor_id = self:addTemporaryValue('combat_armor', -new.armor)
 		return new
 	end,}
+
+newEffect {
+	name = 'WEIRD_WOUNDING_BLOWS', image = 'talents/weird_great_slash.png',
+	desc = 'Wounding Blows',
+	long_desc = function(self, eff)
+		return ([[Target's melee attacks hava %d%% chance to inflict a #CCCCCC#Great Wound#LAST#, reducing constitution by %d and physical resistance by %d%% for %d turns.]])
+			:format(eff.chance, eff.con, eff.resist, eff.duration)
+	end,
+	type = 'physical',
+	subtype = {nature = true, tactic = true,},
+	status = 'beneficial',
+	parameters = {chance = 10, con = 10, resist = 10, duration = 4,},
+	activate = function(self, eff) end,
+	deactivate = function(self, eff) end,
+	callbackOnMeleeAttack = function(self, eff, actor, hitted, crit, weapon, damtype, mult, dam)
+		if not hitted or actor.dead then return end
+		if not actor:canBe 'cut' then return end
+		if not rng.percent(eff.chance) then return end
+		actor:setEffect('EFF_WEIRD_GREAT_WOUND', eff.duration, {
+											src = self,
+											apply_power = self:combatPhysicalpower(),
+											con = eff.con,
+											resist = eff.resist,})
+	end,}
+
+newEffect {
+	name = 'WEIRD_GREAT_WOUND',
+	desc = 'Great Wound',
+	long_desc = function(self, eff)
+		return ([[Target has a great wound, reducing constitution by %d and physical resistance by %d%%.]])
+			:format(eff.con, eff.resist)
+	end,
+	type = 'physical',
+	subtype = {cut = true, wound = true,},
+	status = 'detrimental',
+	parameters = {con = 10, resist = 10,},
+	on_gain = function(self, eff)
+		return '#Target# has received a #FF3333#Great Wound#LAST#!', '+Great Wound'
+	end,
+	on_lose = function(self, eff)
+		return '#Target# has healed the #FF3333#Great Wound#LAST#!', '-Great Wound'
+	end,
+	activate = function(self, eff)
+		self:autoTemporaryValues(
+			eff, {
+				inc_stats = {[stats.STAT_CON] = -eff.con,},
+				resists = {PHYSICAL = -eff.resist,},})
+	end,
+	deactivate = function(self, eff) end,}

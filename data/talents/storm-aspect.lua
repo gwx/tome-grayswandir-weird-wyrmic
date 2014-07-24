@@ -193,6 +193,9 @@ newTalent {
 	daze_duration = function(self, t)
 		return self:scale {low = 0, high = 3, limit = 5, t, after = 'floor',}
 	end,
+	cooldown_mod = function(self, t)
+		return self:scale {low = 100, high = 60, limit = 33, t}
+	end,
 	passives = function(self, t, p)
 		self:autoTemporaryValues(
 			p, {
@@ -205,12 +208,20 @@ newTalent {
 	info = function(self, t)
 		return ([[You have mastered your ability to manipulate lightning as a dragon would. You gain %d%% #SLATE#[*]#LAST# to all #ROYAL_BLUE#lightning#LAST# damage done, and %d%% #SLATE#[*]#LAST# #ROYAL_BLUE#lightning#LAST# resistance piercing. You recover %.1f #SLATE#[*]#LAST# #00FF74#equilibrium#LAST# on any turn in which you deal #ROYAL_BLUE#lightning#LAST# damage.
 While #38FF98#Lightning Speed#LAST# is active, all #ROYAL_BLUE#lightning#LAST# damage you do will #VIOLET#daze#LAST# #SLATE#[mind vs. phys, stun]#LAST# for %d #SLATE#[*]#LAST# turns.
-Points in this talent count double for the purposes of draconic form talents.]])
+Points in this talent count double for the purposes of draconic form talents. All of your storm aspect draconic form talents set other elements on cooldown, and have their own cooldown set by other elements, by %d%% #SLATE#[*]#LAST# as much.]])
 			:format(get(t.inc_damage, self, t),
 							get(t.resists_pen, self, t),
 							get(t.equilibrium_gain, self, t),
-							get(t.daze_duration, self, t))
+							get(t.daze_duration, self, t),
+							get(t.cooldown_mod, self, t))
 	end,}
+
+local aspect_cooldown = function(self, t, cooldown)
+	if self:knowTalent('T_WEIRD_STORM_ASPECT') then
+		cooldown = math.ceil(cooldown * 0.01 * self:callTalent('T_WEIRD_STORM_ASPECT', 'cooldown_mod'))
+	end
+	return cooldown
+end
 
 newTalent {
 	name = 'Storm Claw', short_name = 'WEIRD_STORM_CLAW',
@@ -220,6 +231,13 @@ newTalent {
 	no_energy = 'fake',
 	cooldown = function(self, t)
 		return self:callTalent('T_WEIRD_DRACONIC_CLAW', 'shared_cooldown')
+	end,
+	group_cooldown = function(self, t)
+		return aspect_cooldown(self, t, get(t.cooldown, self, t))
+	end,
+	set_group_cooldown = function(self, t, cd)
+		self.talents_cd[t.id] =
+			math.max(self.talents_cd[t.id] or 0, aspect_cooldown(self, t, cd))
 	end,
 	weapon_mult = function(self, t) return self:scale {low = 1.0, high = 1.8, t,} end,
 	duration = function(self, t) return self:scale {low = 2, high = 5, t, after = 'floor',} end,
@@ -244,13 +262,13 @@ newTalent {
 			game:playSoundNear(self, 'talents/lightning')
 		end
 
-		Talents.cooldown_group(self, t)
+		Talents.cooldown_group(self, t, get(t.group_cooldown, self, t))
 
 		return true
 	end,
 	info = function(self, t)
 		return ([[Hit the target for %d%% #SLATE#[*]#LAST# weapon #ROYAL_BLUE#lightning#LAST# damage, and attempt to #VIOLET#daze#LAST# #SLATE#[phys vs. phys, stun]#LAST# for %d #SLATE#[*]#LAST# turns.]])
-			:format(get(t.damage, self, t) * 100,
+			:format(get(t.weapon_mult, self, t) * 100,
 							get(t.duration, self, t))
 	end,}
 
@@ -262,6 +280,13 @@ newTalent {
 	is_mind = true,
 	cooldown = function(self, t)
 		return self:callTalent('T_WEIRD_DRACONIC_AURA', 'shared_cooldown')
+	end,
+	group_cooldown = function(self, t)
+		return aspect_cooldown(self, t, get(t.cooldown, self, t))
+	end,
+	set_group_cooldown = function(self, t, cd)
+		self.talents_cd[t.id] =
+			math.max(self.talents_cd[t.id] or 0, aspect_cooldown(self, t, cd))
 	end,
 	tactical = {ATTACKAREA = 2,},
 	range = 0,
@@ -296,7 +321,7 @@ newTalent {
 		self:project(tg, self.x, self.y, projector)
 		game:playSoundNear(self, 'talents/lightning')
 
-		Talents.cooldown_group(self, t)
+		Talents.cooldown_group(self, t, get(t.group_cooldown, self, t))
 
 		return true
 	end,
@@ -315,6 +340,13 @@ newTalent {
 	is_mind = true,
 	cooldown = function(self, t)
 		return self:callTalent('T_WEIRD_DRACONIC_BREATH', 'shared_cooldown')
+	end,
+	group_cooldown = function(self, t)
+		return aspect_cooldown(self, t, get(t.cooldown, self, t))
+	end,
+	set_group_cooldown = function(self, t, cd)
+		self.talents_cd[t.id] =
+			math.max(self.talents_cd[t.id] or 0, aspect_cooldown(self, t, cd))
 	end,
 	tactical = {ATTACKAREA = 2,},
 	range = 0,
@@ -378,7 +410,7 @@ newTalent {
 
 		game:playSoundNear(self, 'talents/breath')
 
-		Talents.cooldown_group(self, t)
+		Talents.cooldown_group(self, t, get(t.group_cooldown, self, t))
 
 		return true
 	end,

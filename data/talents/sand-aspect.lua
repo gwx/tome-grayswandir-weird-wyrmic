@@ -220,6 +220,9 @@ newTalent {
 	equilibrium_gain = function(self, t)
 		return self:scale {low = 0.2, high = 2, t,} * 0.6
 	end,
+	cooldown_mod = function(self, t)
+		return self:scale {low = 100, high = 60, limit = 33, t}
+	end,
 	passives = function(self, t, p)
 		self:autoTemporaryValues(
 			p, {
@@ -231,11 +234,19 @@ newTalent {
 	deactivate = function(self, t, p) return true end,
 	info = function(self, t)
 		return ([[You have mastered your ability to manipulate sand as a dragon would. You gain %d%% #SLATE#[*]#LAST# to all physical damage done, and %d%% #SLATE#[*]#LAST# physical resistance piercing. You recover %.1f #SLATE#[*]#LAST# #00FF74#equilibrium#LAST# on any turn in which you deal physical damage.
-Points in this talent count double for the purposes of draconic form talents.]])
+Points in this talent count double for the purposes of draconic form talents. All of your sand aspect draconic form talents set other elements on cooldown, and have their own cooldown set by other elements, by %d%% #SLATE#[*]#LAST# as much.]])
 			:format(get(t.inc_damage, self, t),
 							get(t.resists_pen, self, t),
-							get(t.equilibrium_gain, self, t))
+							get(t.equilibrium_gain, self, t),
+							get(t.cooldown_mod, self, t))
 	end,}
+
+local aspect_cooldown = function(self, t, cooldown)
+	if self:knowTalent('T_WEIRD_SAND_ASPECT') then
+		cooldown = math.ceil(cooldown * 0.01 * self:callTalent('T_WEIRD_SAND_ASPECT', 'cooldown_mod'))
+	end
+	return cooldown
+end
 
 newTalent {
 	name = 'Sand Claw', short_name = 'WEIRD_SAND_CLAW',
@@ -244,6 +255,13 @@ newTalent {
 	equilibrium = 5,
 	cooldown = function(self, t)
 		return self:callTalent('T_WEIRD_DRACONIC_CLAW', 'shared_cooldown')
+	end,
+	group_cooldown = function(self, t)
+		return aspect_cooldown(self, t, get(t.cooldown, self, t))
+	end,
+	set_group_cooldown = function(self, t, cd)
+		self.talents_cd[t.id] =
+			math.max(self.talents_cd[t.id] or 0, aspect_cooldown(self, t, cd))
 	end,
 	weapon_mult = function(self, t) return self:scale {low = 1.0, high = 1.8, t,} end,
 	duration = function(self, t) return self:scale {low = 2, high = 5, limit = 8, t,} end,
@@ -273,7 +291,7 @@ newTalent {
 			self:inflict('blind', actor, get(t.blind_param, self, t))
 		end
 
-		Talents.cooldown_group(self, t)
+		Talents.cooldown_group(self, t, get(t.group_cooldown, self, t))
 
 		return true
 	end,
@@ -291,6 +309,13 @@ newTalent {
 	is_mind = true,
 	cooldown = function(self, t)
 		return self:callTalent('T_WEIRD_DRACONIC_AURA', 'shared_cooldown')
+	end,
+	group_cooldown = function(self, t)
+		return aspect_cooldown(self, t, get(t.cooldown, self, t))
+	end,
+	set_group_cooldown = function(self, t, cd)
+		self.talents_cd[t.id] =
+			math.max(self.talents_cd[t.id] or 0, aspect_cooldown(self, t, cd))
 	end,
 	tactical = {ATTACKAREA = 2, DISABLE = {KNOCKBACK = 2,},},
 	range = 0,
@@ -314,7 +339,7 @@ newTalent {
 		self:project(tg, self.x, self.y, 'PHYSKNOCKBACK', {dam = damage, dist = knockback,})
 		self:doQuake(tg, self.x, self.y)
 
-		Talents.cooldown_group(self, t)
+		Talents.cooldown_group(self, t, get(t.group_cooldown, self, t))
 
 		return true
 	end,
@@ -332,6 +357,13 @@ newTalent {
 	equilibrium = 12,
 	cooldown = function(self, t)
 		return self:callTalent('T_WEIRD_DRACONIC_BREATH', 'shared_cooldown')
+	end,
+	group_cooldown = function(self, t)
+		return aspect_cooldown(self, t, get(t.cooldown, self, t))
+	end,
+	set_group_cooldown = function(self, t, cd)
+		self.talents_cd[t.id] =
+			math.max(self.talents_cd[t.id] or 0, aspect_cooldown(self, t, cd))
 	end,
 	tactical = {ATTACKAREA = 2,},
 	range = 0,
@@ -381,7 +413,7 @@ newTalent {
 
 		game:playSoundNear(self, 'talents/breath')
 
-		Talents.cooldown_group(self, t)
+		Talents.cooldown_group(self, t, get(t.group_cooldown, self, t))
 
 		return true
 	end,

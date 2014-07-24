@@ -18,18 +18,22 @@ Talents.recalc_draconic_form = function(self, t)
  	self:updateTalentTypeMastery('wild-gift/draconic-form')
 end
 
-Talents.cooldown_group = function(self, t)
-	local cd = util.getval(t.cooldown, self, t)
+Talents.cooldown_group = function(self, t, cd)
+	game.log('COOLDOWN %s', cd)
 	local tt = self:getTalentTypeFrom(t.type[1])
 	for _, talent in pairs(tt.talents) do
-		if self:knowTalent(talent) then
-			self.talents_cd[talent.id] = cd
+		if talent.id ~= t.id and self:knowTalent(talent) then
+			self:callTalent(talent.id, 'set_group_cooldown', cd)
 		end
 	end
 end
 
 for _, file in pairs {
-	'draconic-form', 'draconic-might', 'fire-aspect', 'ice-aspect', 'storm-aspect', 'sand-aspect',}
+	'draconic-form', 'draconic-might',
+	'fire-aspect', 'ice-aspect', 'storm-aspect', 'sand-aspect',
+	'blade-aspect',
+	--'stone-aspect', 'wind-aspect',
+										 }
 do
 	load('/data-grayswandir-weird-wyrmic/talents/'..file..'.lua')
 end
