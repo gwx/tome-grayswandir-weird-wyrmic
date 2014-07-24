@@ -35,8 +35,9 @@ end
 -- List all temporary effects satisfying a filter.
 function _M:filterTemporaryEffects(filter)
 	local effects = {}
-	for id, effect in pairs(self.tmp) do
-		if filter(effect) then table.insert(effects, effect) end
+	for id, parameters in pairs(self.tmp) do
+		local effect = self.tempeffect_def[id]
+		if filter(effect, parameters) then table.insert(effects, id) end
 	end
 	return effects
 end

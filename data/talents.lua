@@ -19,7 +19,6 @@ Talents.recalc_draconic_form = function(self, t)
 end
 
 Talents.cooldown_group = function(self, t, cd)
-	game.log('COOLDOWN %s', cd)
 	local tt = self:getTalentTypeFrom(t.type[1])
 	for _, talent in pairs(tt.talents) do
 		if talent.id ~= t.id and self:knowTalent(talent) then

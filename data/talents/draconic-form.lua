@@ -45,15 +45,30 @@ end
 
 local get_element_points = function(self, element)
 	local points = 0
-	local type = self:getTalentTypeFrom('wild-gift/'..element..'-aspect')
+	local typ = self:getTalentTypeFrom('wild-gift/'..element..'-aspect')
 	for i = 1, 3 do
-		points = points + self:getTalentLevelRaw(type.talents[i])
+		points = points + self:getTalentLevelRaw(typ.talents[i])
 	end
-	points = points + self:getTalentLevelRaw(type.talents[4]) * 2
-	return self:wwScale {mult = points / 25, min = 0, max = 25,}
+	points = points + self:getTalentLevelRaw(typ.talents[4]) * 2
+	return self:scale {low = 0, high = 25, points * 4,}
 end
 
-local elements = {fire = 'FIRE', ice = 'COLD', storm = 'LIGHTNING', sand = 'PHYSICAL',}
+local elements = {
+	fire = 'FIRE',
+	ice = 'COLD',
+	storm = 'LIGHTNING',
+	sand = 'PHYSICAL',
+	blade = {text_color = '#CCCCCC#', immunity = 'cut', immunity_display = 'bleed',},}
+
+local known_elements = function(self)
+	local elements = {}
+	if self:knowTalentType 'wild-gift/fire-aspect' then table.insert(elements, 'fire') end
+	if self:knowTalentType 'wild-gift/ice-aspect' then table.insert(elements, 'ice') end
+	if self:knowTalentType 'wild-gift/storm-aspect' then table.insert(elements, 'storm') end
+	if self:knowTalentType 'wild-gift/sand-aspect' then table.insert(elements, 'sand') end
+	if self:knowTalentType 'wild-gift/blade-aspect' then table.insert(elements, 'blade') end
+	return elements
+end
 
 local get_element_level = function(self, t, element, threshold)
 	local base_level = self:getTalentLevel(t)
@@ -62,18 +77,22 @@ local get_element_level = function(self, t, element, threshold)
 	local epower = get_element_points(self, element) * 1.5
 	power = power + epower
 	if power < threshold then
-		return nil, (threshold - power) / 1.5
+		local missing = (threshold - power) / 1.5
+		if epower == 0 then missing = math.max(1, missing) end
+		return nil, missing
+	elseif epower == 0 then
+		return nil, 1
 	else
 		power = math.ceil(power - threshold) * 0.5
-		local type = self:getTalentTypeFrom('wild-gift/'..element..'-aspect')
-		power = math.min(3.5, power - base_level * 0.5) * self:getTalentTypeMastery(type) + base_level * 0.5
+		local typ = self:getTalentTypeFrom('wild-gift/'..element..'-aspect')
+		power = math.min(3.5, power - base_level * 0.5) * self:getTalentTypeMastery(typ) + base_level * 0.5
 		return math.floor(power)
 	end
 end
 
 local on_learn_claw = function(self, t)
 	local threshold = util.getval(t.threshold, self, t)
-	for element, _ in pairs(elements) do
+	for _, element in ipairs(known_elements(self)) do
 		local claw = 'T_WEIRD_'..element:upper()..'_CLAW'
 		local level = get_element_level(self, t, element, threshold) or 0
 		while self:getTalentLevelRaw(claw) < level do
@@ -104,11 +123,14 @@ newTalent {
 			p, 'combat_physcrit', util.getval(t.combat_physcrit, self, t))
 		on_learn_claw(self, t)
 	end,
+	on_unlearn = on_learn_claw,
 	info = function(self, t)
 		local threshold = util.getval(t.threshold, self, t)
 		local msg = ''
-		for element, type in pairs(elements) do
-			local color = damage_type:get(type).text_color or '#WHITE#'
+		for _, element in ipairs(known_elements(self)) do
+			local typ = elements[element]
+			if type(typ) == 'string' then typ = damage_type:get(typ) end
+			local color = typ.text_color or '#WHITE#'
 			local part = ('%s%s#LAST# '):format(color, element:capitalize()..' Claw: ')
 			local level, needed = get_element_level(self, t, element, threshold)
 			part = part .. ('Level %d'):format(level or 0)
@@ -140,10 +162,17 @@ newTalent {
 	passives = function(self, t, p)
 		local resists = {}
 		local resist_mult = util.getval(t.resists, self, t)
-		for element, type in pairs(elements) do
-			local mult = 1
-			if type == 'PHYSICAL' then mult = 0.6 end
-			resists[type] = resist_mult * get_element_points(self, element) * mult
+		for _, element in ipairs(known_elements(self)) do
+			local typ = elements[element]
+			if type(typ) == 'string' then
+				local mult = 1
+				if typ == 'PHYSICAL' then mult = 0.6 end
+				resists[typ] = resist_mult * get_element_points(self, element) * mult
+			else
+				self:talentTemporaryValue(
+					p, typ.immunity..'_immune',
+					resist_mult * get_element_points(self, element) * 0.01)
+			end
 		end
 		self:talentTemporaryValue(p, 'resists', resists)
 		self:talentTemporaryValue(
@@ -154,12 +183,24 @@ newTalent {
 	info = function(self, t)
 		local msg = ''
 		local resist_mult = util.getval(t.resists, self, t)
-		for element, type in pairs(elements) do
-			local color = damage_type:get(type).text_color or '#WHITE#'
-			msg = msg .. ('%s%s#WHITE# +%.1f%%\n'):format(color, type:lower():capitalize()..': ', resist_mult * (get_element_points(self, element) or 0))
+		for _, element in ipairs(known_elements(self)) do
+			local typ = elements[element]
+			local name
+			local mult = 1
+			if typ == 'PHYSICAL' then mult = 0.6 end
+			if type(typ) == 'string' then
+				local tt = typ
+				typ = damage_type:get(typ)
+				name = tt:lower():capitalize()
+			else
+				name = typ.immunity_display:lower():capitalize()
+			end
+			local color = typ.text_color or '#WHITE#'
+			local amount = resist_mult * (get_element_points(self, element) or 0) * mult
+			msg = msg .. ('%s%s#WHITE# +%.1f%%\n'):format(color, name..': ', amount)
 		end
 		return ([[Your body has hardened, giving you %d #SLATE#[*, con]#LAST# armour and %d%% #SLATE#[*]#LAST# hardiness.
-You will also get the following resists based on your elemental talents:
+You will also get the following resists / immunities based on your elemental talents:
 %s]])
 			:format(util.getval(t.combat_armor, self, t),
 							util.getval(t.combat_armor_hardiness, self, t),
@@ -168,7 +209,7 @@ You will also get the following resists based on your elemental talents:
 
 local on_learn_aura = function(self, t)
 	local threshold = util.getval(t.threshold, self, t)
-	for element, _ in pairs(elements) do
+	for _, element in ipairs(known_elements(self)) do
 		local aura = 'T_WEIRD_'..element:upper()..'_AURA'
 		local level = get_element_level(self, t, element, threshold) or 0
 		while self:getTalentLevelRaw(aura) < level do
@@ -209,11 +250,14 @@ newTalent {
 			p, 'fear_immune', util.getval(t.fear_immune, self, t))
 		on_learn_aura(self, t)
 	end,
+	on_unlearn = on_learn_aura,
 	info = function(self, t)
 		local threshold = util.getval(t.threshold, self, t)
 		local msg = ''
-		for element, type in pairs(elements) do
-			local color = damage_type:get(type).text_color or '#WHITE#'
+		for _, element in ipairs(known_elements(self)) do
+			local typ = elements[element]
+			if type(typ) == 'string' then typ = damage_type:get(typ) end
+			local color = typ.text_color or '#WHITE#'
 			local part = ('%s%-18s#LAST# '):format(color, element:capitalize()..' Drake Aura:')
 			local level, needed = get_element_level(self, t, element, threshold)
 			part = part .. ('Level %d'):format(level or 0)
@@ -234,7 +278,7 @@ You will also learn the following talents. They will all have a shared cooldown 
 
 local on_learn_breath = function(self, t)
 	local threshold = util.getval(t.threshold, self, t)
-	for element, _ in pairs(elements) do
+	for _, element in ipairs(known_elements(self)) do
 		local breath = 'T_WEIRD_'..element:upper()..'_BREATH'
 		local level = get_element_level(self, t, element, threshold) or 0
 		while self:getTalentLevelRaw(breath) < level do
@@ -278,11 +322,14 @@ newTalent {
 			p, 'healing_factor', util.getval(t.healing_factor, self, t))
 		on_learn_breath(self, t)
 	end,
+	on_unlearn = on_learn_breath,
 	info = function(self, t)
 		local threshold = util.getval(t.threshold, self, t)
 		local msg = ''
-		for element, type in pairs(elements) do
-			local color = damage_type:get(type).text_color or '#WHITE#'
+		for _, element in ipairs(known_elements(self)) do
+			local typ = elements[element]
+			if type(typ) == 'string' then typ = damage_type:get(typ) end
+			local color = typ.text_color or '#WHITE#'
 			local part = ('%s%-14s#LAST# '):format(color, element:capitalize()..' Breath:')
 			local level, needed = get_element_level(self, t, element, threshold)
 			part = part .. ('Level %d'):format(level or 0)

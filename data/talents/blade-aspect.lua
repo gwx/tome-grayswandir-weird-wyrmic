@@ -142,7 +142,7 @@ newTalent {
 		if not x or not y or not actor then return end
 		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
 
-		local wounds = actor:filterTemporaryEffects(function(effect) return effect.subtype.wound end)
+		local wounds = actor:filterTemporaryEffects(function(effect, parameters) return effect.subtype.wound end)
 		local weapon_mult = get(t.weapon_mult, self, t) + get(t.weapon_mult_wound, self, t) * #wounds
 		self:attackTarget(actor, nil, weapon_mult, true)
 
@@ -186,7 +186,7 @@ newTalent {
 		p.wound_heal_factor = get(t.wound_heal_factor, self, t)
 		return p
 	end,
-	deactivate = function(self, t, p) end,
+	deactivate = function(self, t, p) return true end,
 	callbackOnMeleeHit = function(self, t, src, dam)
 		local p = self.sustain_talents[t.id]
 		if not rng.percent(p.wound_chance) then return end
@@ -212,7 +212,6 @@ Every attempt to inflict a #CC0000#Deep Wound#LAST# will increase your #00FF74#e
 							get(t.equilibrium_cost, self, t))
 	end,}
 
--- XXX not implemented.
 newTalent {
 	name = 'Blade Aspect', short_name = 'WEIRD_BLADE_ASPECT',
 	type = {'wild-gift/blade-aspect', 4,},
@@ -228,7 +227,7 @@ newTalent {
 		return self:scale {low = 0, high = 12, t,}
 	end,
 	equilibrium_gain = function(self, t)
-		return self:scale {low = 0.2, high = 2, t,}
+		return self:scale {low = 0.2, high = 2, t,} * 2.5
 	end,
 	dammod_mult = function(self, t)
 		return self:scale {low = 100, high = 300, limit = 400, t,}
@@ -243,10 +242,8 @@ newTalent {
 				inc_wound_damage = get(t.inc_damage, self, t),
 				dammod_str_100_mult = get(t.dammod_mult, self, t),})
 	end,
-	activate = function(self, t) return {} end,
-	deactivate = function(self, t, p) return true end,
 	info = function(self, t)
-		return ([[You have mastered your ability to manipulate blades as a dragon would. You gain %d%% #SLATE#[*]#LAST# physical damage, and %d%% #SLATE#[*]#LAST# physical resistance piercing, for every wound a target has. You recover %.1f #SLATE#[*]#LAST# #00FF74#equilibrium#LAST# on any turn in which you attempt to inflict a wound with a draconic talent. You treat all weapons as having the portion of their strength damage modifier over 100%% be %d%% #SLATE#[*]#LAST# as much #SLATE#(eg. 120%% -> %d%%#WHITE##SLATE#)#LAST#
+		return ([[You have mastered your ability to manipulate blades as a dragon would. You gain %d%% #SLATE#[*]#LAST# physical damage, and %d%% #SLATE#[*]#LAST# physical resistance piercing, for every wound a target has. You recover %.1f #SLATE#[*]#LAST# #00FF74#equilibrium#LAST# on any turn in which you inflict a wound. You treat all weapons as having the portion of their strength damage modifier over 100%% be %d%% #SLATE#[*]#LAST# as much #SLATE#(eg. 120%% -> %d%%#WHITE##SLATE#)#LAST#
 Points in this talent count double for the purposes of draconic form talents. All of your blade aspect draconic form talents set other elements on cooldown, and have their own cooldown set by other elements, by %d%% #SLATE#[*]#LAST# as much.]])
 			:format(get(t.inc_damage, self, t),
 							get(t.resists_pen, self, t),
@@ -254,4 +251,52 @@ Points in this talent count double for the purposes of draconic form talents. Al
 							get(t.dammod_mult, self, t),
 							get(t.dammod_mult, self, t) * 0.2 + 100,
 							get(t.cooldown_mod, self, t))
+	end,}
+
+local aspect_cooldown = function(self, t, cooldown)
+	if self:knowTalent('T_WEIRD_BLADE_ASPECT') then
+		cooldown = math.ceil(cooldown * 0.01 * self:callTalent('T_WEIRD_BLADE_ASPECT', 'cooldown_mod'))
+	end
+	return cooldown
+end
+
+newTalent {
+	name = 'Blade Claw', short_name = 'WEIRD_BLADE_CLAW',
+	type = {'wild-gift/draconic-claw', 1,}, hide = true,
+	points = 5,
+	equilibrium = 3,
+	no_energy = 'fake',
+	cooldown = function(self, t)
+		return self:callTalent('T_WEIRD_DRACONIC_CLAW', 'shared_cooldown')
+	end,
+	group_cooldown = function(self, t)
+		return aspect_cooldown(self, t, get(t.cooldown, self, t))
+	end,
+	set_group_cooldown = function(self, t, cd)
+		self.talents_cd[t.id] =
+			math.max(self.talents_cd[t.id] or 0, aspect_cooldown(self, t, cd))
+	end,
+	weapon_mult = function(self, t) return self:scale {low = 2.0, high = 3.5, t,} end,
+	requires_target = true,
+	tactical = {ATTACK = 2,},
+	requires_target = true,
+	range = 1,
+	target = function(self, t)
+		return {type = 'hit', talent = t, range = get(t.range, self, t),}
+	end,
+	action = function(self, t)
+		local tg = get(t.target, self, t)
+		local x, y, actor = self:getTarget(tg)
+		if not x or not y or not actor then return end
+		if core.fov.distance(self.x, self.y, x, y) > tg.range then return end
+
+		self:attackTarget(actor, nil, get(t.weapon_mult, self, t))
+
+		Talents.cooldown_group(self, t, get(t.group_cooldown, self, t))
+
+		return true
+	end,
+	info = function(self, t)
+		return ([[Hit the target for %d%% #SLATE#[*]#LAST# weapon damage.]])
+			:format(get(t.weapon_mult, self, t) * 100)
 	end,}

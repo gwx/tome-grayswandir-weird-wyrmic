@@ -413,7 +413,7 @@ newEffect {
 	name = 'WEIRD_WOUNDING_BLOWS', image = 'talents/weird_great_slash.png',
 	desc = 'Wounding Blows',
 	long_desc = function(self, eff)
-		return ([[Target's melee attacks hava %d%% chance to inflict a #CCCCCC#Great Wound#LAST#, reducing constitution by %d and physical resistance by %d%% for %d turns.]])
+		return ([[Target's melee attacks hava %d%% chance to inflict a #FF3333#Great Wound#LAST#, reducing constitution by %d and physical resistance by %d%% for %d turns.]])
 			:format(eff.chance, eff.con, eff.resist, eff.duration)
 	end,
 	type = 'physical',

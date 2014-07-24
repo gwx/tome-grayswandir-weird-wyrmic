@@ -18,71 +18,6 @@ local damage_type = require 'engine.DamageType'
 local _M = loadPrevious(...)
 
 -- Generic Scaling Function
--- Examples:
---
--- self:wwScale {min = 10, max = 50, stat = 'str',}
--- Returns 10 at 10 str, 50 at 100 str, and 77 at 200 str.
---
--- self:wwScale {max = 50, limit = 100, stat = 'str',}
--- Returns 16.67 at 10 str, 50 at 100 str, and 65.4 at 200 str.
---
--- self:wwScale {min = 1.2, max = 1.9, talent = t,}
--- Returns 1.2 at talent level 1 and 1.9 at talent level 5
---
--- self:wwScale {min = 3, max = 7, talent = t, stat = 'cun', round = 'floor',}
--- At talent level 1, cunning 10:   3.00
--- At talent level 5, cunning 10:   5.55 (floored to 5.00)
--- At talent level 5, cunning 100:  7.00
-function _M:wwScale(t)
-	local value = 5
-	if t.talent then value = value * 0.2 * self:getTalentLevel(t.talent) end
-
-	if t.mult then value = (value - 1) * t.mult + 1 end
-
-	if t.stat then
-		-- For both a talent and stat, the stat = 0 is at 50% power.
-		if t.talent then
-			value = ((value - 1) * (self:getStat(t.stat) + 100) * 0.005) + 1
-		-- For scaling only on a stat, the stat = 10 is at 0% power.
-		else
-			value = ((value - 1) * (self:getStat(t.stat) - 10) / 90) + 1
-		end
-	end
-
-	local power
-	if t.power == 'attack' then power = self:combatAttack()
-	elseif t.power == 'physical' then power = self:combatPhysicalpower()
-	elseif t.power == 'mind' then power = self:combatMindpower()
-	elseif t.power == 'spell' then power = self:combatSpellpower()
-	end
-	if power then
-		-- For both a talent and power, the power = 0 is at 50% power.
-		if t.talent then
-			value = ((value - 1) * (power + 100) * 0.005) + 1
-		-- For scaling only on a power, the power = 0 is at 0% power.
-		else
-			value = ((value - 1) * power * 0.01) + 1
-		end
-	end
-
-	if t.limit then
-		value = self:combatTalentLimit(value, t.limit, t.min, t.max)
-	else
-		value = self:combatTalentScale(value, t.min, t.max)
-	end
-
-	if t.round == 'floor' then value = math.floor(value)
-	elseif t.round == 'ceil' then value = math.ceil(value)
-	end
-
-	if t.scale == 'damage' then value = self:rescaleDamage(value) end
-
-	return value
-end
-
--- Phase this one in over time:
-
--- Generic Scaling Function
 --
 -- Takes a table with the following arguments. Any or all may be missing.
 --
@@ -119,7 +54,7 @@ function _M:scale(t)
 	local asynergy_score = 0
 
 	for _, x in ipairs(t) do
-		local score = 1
+		local score = x
 
 		if type(x) == 'table' then x = x.id end
 
@@ -164,6 +99,20 @@ function _M:scale(t)
 	end
 
 	return result
+end
+
+
+local combatDamage = _M.combatDamage
+function _M:combatDamage(weapon, adddammod)
+	adddammod = adddammod or {}
+
+	local str_100 = self:attr 'dammod_str_100_mult'
+	local str = table.get(weapon, 'dammod', 'str')
+	if str_100 and str and str > 1 then
+		adddammod.str = (adddammod.str or 0) + (str - 1) * str_100 * 0.01
+	end
+
+	return combatDamage(self, weapon, adddammod)
 end
 
 return _M

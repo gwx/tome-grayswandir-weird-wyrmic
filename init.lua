@@ -17,7 +17,7 @@
 long_name = 'Weird Wyrmic'
 short_name = 'grayswandir-weird-wyrmic'
 for_module = 'tome'
-version = {1,2,2,}
+version = {1,2,3,}
 weight = 60
 author = {'grayswandir',}
 description = [[My own take at wyrmics. Adds the "Weird Wyrmic" class, which will be unlocked if you have wyrmics unlocked.]]

@@ -16,6 +16,44 @@
 
 local map = require 'engine.Map'
 
+local physical = DamageType.dam_def.PHYSICAL.projector
+DamageType.dam_def.PHYSICAL.projector = function(src, x, y, type, dam)
+	local actor = game.level.map(x, y, map.ACTOR)
+	if not actor then return end
+
+	if src and src.inc_burn_damage then
+		if _G.type(dam) == 'table' then
+			dam.dam = dam.dam * (100 + src.inc_burn_damage) * 0.01
+		else
+			dam = dam * (100 + src.inc_burn_damage) * 0.01
+		end
+	end
+
+	local temps = {}
+
+	if src then
+		local inc = src:attr 'inc_wound_damage'
+		if inc then
+			local wounds = #actor:filterTemporaryEffects(function(effect, parameters) return effect.subtype.wound end)
+			if wounds > 0 then
+				inc = inc * wounds
+				src:autoTemporaryValues(
+					temps, {
+						inc_damage = {PHYSICAL = inc,},
+						resists_pen = {PHYSICAL = inc,},})
+			end
+		end
+	end
+
+	local ret = {physical(src, x, y, type, dam)}
+
+	if src then
+		src:autoTemporaryValuesRemove(temps)
+	end
+
+	return unpack(ret)
+end
+
 local fireburn = DamageType.dam_def.FIREBURN.projector
 DamageType.dam_def.FIREBURN.projector = function(src, x, y, type, dam)
 	if src and src.inc_burn_damage then
