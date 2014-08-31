@@ -115,4 +115,15 @@ function _M:combatDamage(weapon, adddammod)
 	return combatDamage(self, weapon, adddammod)
 end
 
+local combatSpeed = _M.combatSpeed
+function _M:combatSpeed(weapon)
+	local speed = combatSpeed(self, weapon)
+	weapon = weapon or self.combat or {}
+	local shield_speed = self:attr 'combat_shield_speed'
+	if shield_speed and weapon.talented == 'shield' then
+		speed = speed / math.max((100 + shield_speed) * 0.01, 0.1)
+	end
+	return speed
+end
+
 return _M

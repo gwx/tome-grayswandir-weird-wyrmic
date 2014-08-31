@@ -19,7 +19,7 @@ local map = require 'engine.Map'
 local physical = DamageType.dam_def.PHYSICAL.projector
 DamageType.dam_def.PHYSICAL.projector = function(src, x, y, type, dam)
 	local actor = game.level.map(x, y, map.ACTOR)
-	if not actor then return end
+	if not actor then return 0 end
 
 	if src and src.inc_burn_damage then
 		if _G.type(dam) == 'table' then
@@ -31,7 +31,7 @@ DamageType.dam_def.PHYSICAL.projector = function(src, x, y, type, dam)
 
 	local temps = {}
 
-	if src then
+	if src and src.autoTemporaryValues then
 		local inc = src:attr 'inc_wound_damage'
 		if inc then
 			local wounds = #actor:filterTemporaryEffects(function(effect, parameters) return effect.subtype.wound end)
@@ -47,7 +47,7 @@ DamageType.dam_def.PHYSICAL.projector = function(src, x, y, type, dam)
 
 	local ret = {physical(src, x, y, type, dam)}
 
-	if src then
+	if src and src.autoTemporaryValuesRemove then
 		src:autoTemporaryValuesRemove(temps)
 	end
 
@@ -95,4 +95,11 @@ newDamageType {
 				src:forceUseTalent('T_WEIRD_BURROW', {no_energy = true,})
 			end
 		end
+	end,}
+
+newDamageType {
+	name = 'multihued', type = 'WEIRD_MULTIHUED', text_color = '#BBFFBB#',
+	projector = function(src, x, y, typ, dam)
+		typ = util.getval {'PHYSICAL', 'FIRE', 'COLD', 'LIGHTNING', 'ACID',}
+		return DamageType:get(typ).projector(src, x, y, typ, dam)
 	end,}

@@ -38,7 +38,6 @@ newTalent {
 	require = make_require(1),
 	points = 5,
 	equilibrium = 2,
-	no_npc_use = true,
 	cooldown = 12,
 	range = 1,
 	weapon_mult = function(self, t) return self:scale {low = 0.9, high = 1.4, t,} end,
@@ -50,6 +49,7 @@ newTalent {
 		end
 		return duration
 	end,
+	tactical = {ATTACK = 2,},
 	no_energy = 'fake',
 	defense = function(self, t) return self:scale {low = 5, high = 30, t, 'phys',} end,
 	resist = function(self, t) return self:scale {low = 0, high = 22, t, 'phys',} end,
@@ -99,7 +99,7 @@ newTalent {
 		return true
 	end,
 	info = function(self, t)
-		return ([[Powerfully swing your weapon into the ground and then into an adjacent target for %d%% #SLATE#[*]#LAST# weapon physical damage. This will kick up sand, hitting the target and the 3 spaces behind it for %d #SLATE#[* phys]#LAST# physical damage.
+		return ([[Powerfully swing your weapon into the ground and then into an adjacent target for %d%% #SLATE#[*]#LAST# weapon physical damage. This will kick up sand, hitting the target and the 3 spaces behind it for %d #SLATE#[phys]#LAST# physical damage.
 If you hit anything, the kicked up sand will form a #LIGHT_UMBER#Sand Barrier#LAST# around you, giving you %d #SLATE#[*, phys]#LAST# defense and %d%% #SLATE#[*, phys]#LAST# physical resistance for %d turns.]])
 			:format(get(t.weapon_mult, self, t) * 100,
 							dd(self, 'PHYSICAL', get(t.project, self, t)),
@@ -200,7 +200,7 @@ newTalent {
 If you hit anything the duration of your #LIGHT_UMBER#Sand Barrier#LAST# will be reset to full.]])
 			:format(get(t.radius, self, t),
 							dd(self, 'PHYSICAL', get(t.project, self, t)),
-							self:describeInflict('blind', get(t.inflict_blind_param, self, t)))
+							self:describeInflict('blind', false, get(t.inflict_blind_param, self, t)))
 	end,}
 
 newTalent {
@@ -298,7 +298,7 @@ newTalent {
 	info = function(self, t)
 		return ([[Hit the target for %d%% #SLATE#[*]#LAST# weapon physical damage, and %s]])
 			:format(get(t.weapon_mult, self, t) * 100,
-							self:describeInflict('blind', get(t.blind_param, self, t)))
+							self:describeInflict('blind', false, get(t.blind_param, self, t)))
 	end,}
 
 newTalent {
@@ -418,8 +418,8 @@ newTalent {
 		return true
 	end,
 	info = function(self, t)
-		return ([[Breathe sand at your foes, doing %d #SLATE#[*, phys, mind crit]#LAST# physical damage in a radius %d #SLATE#[*]#LASTE# cone. It will %s]])
+		return ([[Breathe sand at your foes, doing %d #SLATE#[*, phys, mind crit]#LAST# physical damage in a radius %d #SLATE#[*]#LAST# cone. It will %s]])
 			:format(dd(self, 'PHYSICAL', get(t.damage, self, t)),
 							get(t.radius, self, t),
-							self:describeInflict('blind', get(t.blind_param, self, t)))
+							self:describeInflict('blind', false, get(t.blind_param, self, t)))
 	end,}

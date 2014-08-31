@@ -38,7 +38,7 @@ newBirthDescriptor {
 		['wild-gift/draconic-might'] = {true, 0.3,},
 		['wild-gift/fire-aspect'] = {true, 0.3,},
 		['wild-gift/ice-aspect'] = {true, 0.3,},
-		['wild-gift/storm-aspect'] = {true, 0.3,},
+		['wild-gift/lightning-aspect'] = {true, 0.3,},
 		['wild-gift/sand-aspect'] = {true, 0.3,},
 		['wild-gift/blade-aspect'] = {false, 0.3,},
 		['wild-gift/stone-aspect'] = {false, 0.3,},

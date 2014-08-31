@@ -29,8 +29,9 @@ end
 
 for _, file in pairs {
 	'draconic-form', 'draconic-might',
-	'fire-aspect', 'ice-aspect', 'storm-aspect', 'sand-aspect',
-	'blade-aspect',
+	'fire-aspect', 'ice-aspect', 'lightning-aspect', 'sand-aspect',
+	'blade-aspect', 'stone-aspect',
+	'misc',
 	--'stone-aspect', 'wind-aspect',
 										 }
 do

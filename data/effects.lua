@@ -457,3 +457,72 @@ newEffect {
 				resists = {PHYSICAL = -eff.resist,},})
 	end,
 	deactivate = function(self, eff) end,}
+
+newEffect {
+	name = 'WEIRD_IMPALED',
+	desc = 'Impaled',
+	long_desc = function(self, eff)
+		local msg = ''
+		if eff.is_pin then
+			msg = msg .. ' pinning it'
+			if eff.is_wound then msg = msg .. ' and' end
+		end
+		if eff.is_wound then
+			msg = msg .. (' dealing %d physical damage every turn'):format(eff.damage)
+		end
+		return ([[Target has been impaled with a large spike,%s.]]):format(msg)
+	end,
+	type = 'physical',
+	subtype = {wound = true, pin = true,},
+	status = 'detrimental',
+	parameters = {damage = 10,},
+	on_gain = function(self, eff)
+		return '#Target# has been #CCCCFF#Impaled#LAST#!', '+Impaled'
+	end,
+	on_lose = function(self, eff)
+		return '#Target# is no longer #CCCCFF#Impaled#LAST#!', '-Impaled'
+	end,
+	activate = function(self, eff)
+		local count = 0
+		if self:canBe 'pin' then
+			self:effectTemporaryValue(eff, 'never_move', 1)
+			eff.is_pin = true
+			count = count + 1
+		end
+		if self:canBe 'cut' then
+			eff.is_wound = true
+			count = count + 1
+		end
+		if count == 0 then self:removeEffect 'EFF_WEIRD_IMPALED' end
+	end,
+	deactivate = function(self, eff) end,
+	on_timeout = function(self, eff)
+		if eff.src and eff.is_wound then
+			eff.src:projectOn(self, 'PHYSICAL', damage)
+		end
+	end,}
+
+newEffect{
+	name = 'WEIRD_PETRIFIED', image = 'talents/stone_touch.png',
+	desc = 'Petrified',
+	long_desc = function(self, eff) return 'The target has been turned to stone, making it subject to shattering but improving physical(+20%), fire(+80%) and lightning(+50%) resistances.' end,
+	type = 'physical',
+	subtype = {earth = true, stone = true,},
+	status = 'detrimental',
+	parameters = {},
+	on_gain = function(self, err) return '#Target# is #BBBBBB#Petrified#LAST#!', '+Petrified' end,
+	on_lose = function(self, err) return '#Target# is no longer #BBBBBB#Petrified#LAST#.', '-Petrified' end,
+	activate = function(self, eff)
+		self:autoTemporaryValues(
+			eff, {
+				stoned = 1,
+				resists = {FIRE = 80, LIGHTNING = 50, PHYSICAL = 20,},})
+	end,
+	deactivate = function(self, eff) end,}
+
+local blocking = TemporaryEffects.tempeffect_def.EFF_BLOCKING
+local do_block = blocking.do_block
+blocking.do_block = function(type, dam, eff, self, src)
+	self.block_done = true
+	return do_block(type, dam, eff, self, src)
+end

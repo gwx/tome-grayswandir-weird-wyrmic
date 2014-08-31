@@ -15,6 +15,86 @@
 
 
 newInflict {
+	name = 'stun',
+	desc = function(parameters, tense)
+		return ('#ORANGE#%s#LAST# #SLATE#[phys vs phys, stun]#LAST# for %d%s turns')
+			:format((tense == 'progressive' and 'Stunning') or
+								(tense == 'future' and 'Stunned') or
+								'Stun',
+							parameters.duration,
+							parameters.duration_scale or '')
+	end,
+	action = function(self, target, parameters)
+		local stun = false
+		if target:canBe 'stun' then
+			stun = self:inflictEffect(target, 'STUNNED', parameters.duration)
+		end
+		if not stun then
+			game.logSeen(target, '%s resists being #Orange#Stunned#LAST#!', target.name:capitalize())
+		end
+	end,}
+
+newInflict {
+	name = 'daze',
+	desc = function(parameters, tense)
+		return ('#ORANGE#%s#LAST# #SLATE#[phys vs phys, stun]#LAST# for %d%s turns')
+			:format((tense == 'progressive' and 'Dazing') or
+								(tense == 'future' and 'Dazed') or
+								'Daze',
+							parameters.duration,
+							parameters.duration_scale or '')
+	end,
+	action = function(self, target, parameters)
+		local daze = false
+		if target:canBe 'stun' then
+			daze = self:inflictEffect(target, 'DAZED', parameters.duration)
+		end
+		if not daze then
+			game.logSeen(target, '%s resists being #Orange#Dazed#LAST#!', target.name:capitalize())
+		end
+	end,}
+
+newInflict {
+	name = 'pin',
+	desc = function(parameters, tense)
+		return ('#LIGHT_UMBER#%s#LAST# #SLATE#[phys vs phys, pin]#LAST# for %d%s turns')
+			:format((tense == 'progressive' and 'Pinning') or
+								(tense == 'future' and 'Pinned') or
+								'Pin',
+							parameters.duration,
+							parameters.duration_scale or '')
+	end,
+	action = function(self, target, parameters)
+		local pin = false
+		if target:canBe 'pin' then
+			pin = self:inflictEffect(target, 'PINNED', parameters.duration)
+		end
+		if not pin then
+			game.logSeen(target, '%s resists being #LIGHT_UMBER#Pinned#LAST#!', target.name:capitalize())
+		end
+	end,}
+
+newInflict {
+	name = 'petrify',
+	desc = function(parameters, tense)
+		return ('#BBBBBB#%s#LAST# #SLATE#[phys vs phys, stone, instakill]#LAST# for %d%s turns. Petrification prevents you from acting or healing and gives the following resistances: 80%% #LIGHT_RED#fire#LAST#, 50%% #ROYAL_BLUE#lightning#LAST#, 20%% physical. Being hit for 30%% of your max life while petrified will shatter and kill you.')
+			:format((tense == 'progressive' and 'Perifying') or
+								(tense == 'future' and 'Petrified') or
+								'Petrify',
+							parameters.duration,
+							parameters.duration_scale or '')
+	end,
+	action = function(self, target, parameters)
+		local apply = false
+		if target:canBe 'stone' and target:canBe 'instakill' then
+			apply = self:inflictEffect(target, 'WEIRD_PETRIFIED', parameters.duration)
+		end
+		if not apply then
+			game.logSeen(target, '%s resists being #BBBBBB#Petrified#LAST#!', target.name:capitalize())
+		end
+	end,}
+
+newInflict {
 	name = 'knockback',
 	desc = function(parameters)
 		return ('#LIGHT_UMBER#knockback#LAST# #SLATE#[phys vs phys, knockback]#LAST# the target by %d%s tiles.')
@@ -42,7 +122,7 @@ newInflict {
 newInflict {
 	name = 'blind',
 	desc = function(parameters)
-		return ('try to #YELLOW#blind#LAST# #SLATE#[phys vs phys, blind]#LAST# the target for %d%s turns. If this fails, instead try to #GREY#partially blind#LAST# #SLATE#[phys vs phys]#LAST# the target, reducing its accuracy by %d%s #SLATE#[phys, reduced by blind]#LAST#.')
+		return ('try to #YELLOW#Blind#LAST# #SLATE#[phys vs phys, blind]#LAST# the target for %d%s turns. If this fails, instead try to #CCCC00#Partially Blind#LAST# #SLATE#[phys vs phys]#LAST# the target, reducing its accuracy by %d%s #SLATE#[phys, reduced by blind]#LAST#.')
 		:format(parameters.duration,
 						parameters.duration_scale or '',
 						parameters.accuracy,
@@ -50,7 +130,9 @@ newInflict {
 	end,
 	action = function(self, target, parameters)
 		if self:inflictEffect(target, 'BLINDED', parameters.duration, nil, 'blind') then return end
-		game.logSeen(target, '%s resists being #YELLOW#blinded#LAST#!', target.name:capitalize())
-		self:inflictEffect(target, 'WEIRD_PARTIALLY_BLINDED', parameters.duration, nil ,nil, {
-												 accuracy = parameters.accuracy})
+		game.logSeen(target, '%s resists being #YELLOW#Blinded#LAST#!', target.name:capitalize())
+		if (target.blind_immune or 0) < 1 then
+			self:inflictEffect(target, 'WEIRD_PARTIALLY_BLINDED', parameters.duration, nil ,nil, {
+													 accuracy = parameters.accuracy})
+		end
 	end,}

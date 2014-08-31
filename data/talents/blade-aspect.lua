@@ -34,7 +34,7 @@ local make_require = function(tier)
 end
 
 local two_hand_pre_use = function(self, t, silent)
-	if not self:hasTwoHandedWeapon() then
+	if not self:hasTwoHandedWeapon() and not self.innate_drake_talents then
 		if not silent then
 			game.logPlayer(self, 'You require a two-handed weapon to use this talent.')
 		end
@@ -265,6 +265,7 @@ newTalent {
 	type = {'wild-gift/draconic-claw', 1,}, hide = true,
 	points = 5,
 	equilibrium = 3,
+	on_pre_use = two_hand_pre_use,
 	no_energy = 'fake',
 	cooldown = function(self, t)
 		return self:callTalent('T_WEIRD_DRACONIC_CLAW', 'shared_cooldown')
@@ -297,6 +298,151 @@ newTalent {
 		return true
 	end,
 	info = function(self, t)
-		return ([[Hit the target for %d%% #SLATE#[*]#LAST# weapon damage.]])
+		return ([[Hit the target for %d%% #SLATE#[*]#LAST# weapon damage.
+Requires a two-handed weapon to use.]])
 			:format(get(t.weapon_mult, self, t) * 100)
+	end,}
+
+newTalent {
+	name = 'Blade Drake Aura', short_name = 'WEIRD_BLADE_AURA',
+	type = {'wild-gift/draconic-aura', 1,}, hide = true,
+	points = 5,
+	equilibrium = 16,
+	is_mind = true,
+	cooldown = function(self, t)
+		return self:callTalent('T_WEIRD_DRACONIC_AURA', 'shared_cooldown')
+	end,
+	group_cooldown = function(self, t)
+		return aspect_cooldown(self, t, get(t.cooldown, self, t))
+	end,
+	set_group_cooldown = function(self, t, cd)
+		self.talents_cd[t.id] =
+			math.max(self.talents_cd[t.id] or 0, aspect_cooldown(self, t, cd))
+	end,
+	tactical = {ATTACKAREA = 2,},
+	range = 0,
+	radius = function(self, t) return self:scale {low = 2, high = 5, limit = 8, t, after = 'floor',} end,
+	damage = function(self, t) return self:scale {low = 30, high = 120, t, 'phys', after = 'damage',} end,
+	cripple_dur = 5,
+	cripple_speed = function(self, t) return self:scale {low = 0.1, high = 0.3, limit = 0.5, t,} end,
+	target = function(self, t)
+		return {type = 'ball', talent = t, friendlyfire = false,
+						range = get(t.range, self, t),
+						radius = get(t.radius, self, t),}
+	end,
+	action = function(self, t)
+		local tg = get(t.target, self, t)
+
+		local radius = get(t.radius, self, t)
+		game.level.map:particleEmitter(self.x, self.y, radius + 2, 'ball_matter', {radius = radius + 2,})
+		game:playSoundNear(self, 'talents/icestorm')
+
+		local damage = self:mindCrit(get(t.damage, self, t))
+		local cripple_dur = get(t.cripple_dur, self, t)
+		local cripple_speed = get(t.cripple_speed, self, t)
+		local apply_power = self:combatMindpower()
+		local projector = function(x, y, tg, self)
+			local actor = game.level.map(x, y, map.ACTOR)
+			if not actor then return end
+			self:projectOn(actor, 'PHYSICAL', damage)
+			if not actor:canBe 'cut' then return end
+			actor:setEffect('EFF_CRIPPLE', cripple_dur, {
+												src = self,
+												apply_power = apply_power,
+												speed = cripple_speed,})
+		end
+		self:project(tg, self.x, self.y, projector)
+
+		Talents.cooldown_group(self, t, get(t.group_cooldown, self, t))
+
+		return true
+	end,
+	info = function(self, t)
+		return ([[Release blades in radius %d #SLATE#[*]#LAST#, dealing %d #SLATE#[*, phys, mind crit]#LAST# physical damage and #RED#Crippling#LAST# #SLATE#[mind vs phys, cut]#LAST# them for %d turns, reducing their combat. spell. and mind speed by %d%% #SLATE#[*]#LAST#.]])
+			:format(get(t.radius, self, t),
+							dd(self, 'PHYSICAL', get(t.damage, self, t)),
+							get(t.cripple_dur, self, t),
+							get(t.cripple_speed, self ,t) * 100)
+	end,}
+
+newTalent {
+	name = 'Blade Breath', short_name = 'WEIRD_BLADE_BREATH',
+	type = {'wild-gift/draconic-breath', 1,}, hide = true,
+	points = 5,
+	equilibrium = 12,
+	cooldown = function(self, t)
+		return self:callTalent('T_WEIRD_DRACONIC_BREATH', 'shared_cooldown')
+	end,
+	group_cooldown = function(self, t)
+		return aspect_cooldown(self, t, get(t.cooldown, self, t))
+	end,
+	set_group_cooldown = function(self, t, cd)
+		self.talents_cd[t.id] =
+			math.max(self.talents_cd[t.id] or 0, aspect_cooldown(self, t, cd))
+	end,
+	tactical = {ATTACKAREA = 2,},
+	range = 0,
+	direct_hit = true,
+	is_mind = true,
+	radius = function(self, t) return self:scale {low = 5, high = 8, limit = 10, t, after = 'ceil',} end,
+	damage = function(self, t)
+		return self:scale {low = 40, high = 400, t, 'phys', after = 'damage',}
+	end,
+	impale_damage = function(self, t)
+		return self:scale {low = 20, high = 90, t, 'phys', after = 'damage',}
+	end,
+	impale_dur = function(self, t) return self:scale {low = 5, high = 8, limit = 12, t, after = 'floor'} end,
+	target = function(self, t)
+		return {type = 'cone', talent = t, selffire = false,
+						range = get(t.range, self, t),
+						radius = get(t.radius, self, t),}
+	end,
+	action = function(self, t)
+		local tg = get(t.target, self, t)
+		local x, y = self:getTarget(tg)
+		if not x or not y then return end
+
+		local damage = self:mindCrit(get(t.damage, self, t))
+		local apply_power = self:combatPhysicalpower()
+		local impale_dur = get(t.impale_dur, self, t)
+		local impale_damage = get(t.impale_damage, self, t)
+		local kills = 0
+		local projector = function(x, y, tg, self)
+			local actor = game.level.map(x, y, map.ACTOR)
+			if not actor or actor.dead then return end
+			self:projectOn(actor, 'PHYSICAL', damage)
+			actor:setEffect('EFF_WEIRD_IMPALED', impale_dur, {
+												src = self,
+												apply_power = apply_power,
+												damage = impale_damage,})
+			if actor.dead then kills = kills + 1 end
+		end
+		self:project(tg, x, y, projector)
+
+		self:alterTalentCoolingdown('T_WEIRD_GREAT_SLASH', -kills)
+
+		game.level.map:particleEmitter(self.x, self.y, tg.radius, 'breath_time', {
+																		 radius = tg.radius,
+																		 tx = x - self.x,
+																		 ty = y - self.y,})
+		--[[
+		if core.shader.active(4) then
+			local bx, by = self:attachementSpot('back', true)
+			self:addParticles(particles.new('shader_wings', 1, {img='life=18, x=bx, y=by, fade=-0.006, deploy_speed=14}))
+		end
+		--]]
+
+		game:playSoundNear(self, 'talents/breath')
+
+		Talents.cooldown_group(self, t, get(t.group_cooldown, self, t))
+
+		return true
+	end,
+	info = function(self, t)
+		return ([[Breathe blades at your foes, doing %d #SLATE#[*, phys, mind crit]#LAST# physical damage in a radius %d #SLATE#[*]#LAST# cone, attempting to #CCCCFF#Impale#LAST# #SLATE#[phys vs phys, bleed, pin]#LAST# those hit for %d #SLATE#[*]#LAST# turns, pinning them in place and dealing %d #SLATE#[*, phys]#LAST# physical damage per turn.
+Every enemy killed in the initial blast will reduce the cooldown of Great Slash by 1.]])
+			:format(dd(self, 'PHYSICAL', get(t.damage, self, t)),
+							get(t.radius, self, t),
+							get(t.impale_dur, self, t),
+							dd(self, 'PHYSICAL', get(t.impale_damage, self ,t)))
 	end,}

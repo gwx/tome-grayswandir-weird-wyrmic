@@ -51,6 +51,7 @@ newTalent {
 	target = function(self, t)
 		return {type = 'hit', talent = t, range = get(t.range, self, t),}
 	end,
+	requires_target = true,
 	action = function(self, t)
 		local tg = get(t.target, self, t)
 		local x, y, actor = self:getTarget(tg)
@@ -92,6 +93,7 @@ newTalent {
 	damage = function(self, t) return self:scale {low = 30, high = 300, 'phys', t, after = 'damage',} end,
 	confuse = function(self, t) return self:scale {low = 30, high = 60, limit = 80, t,} end,
 	duration = 3,
+	no_silence = true,
 	tactical = { DEFEND = 1, DISABLE = { confusion = 3 } },
 	target = function(self, t)
 		return {type = 'ball', talent = t, friendlyfire = false,
@@ -185,7 +187,7 @@ newTalent {
 		return ([[With a powerful flap of wings, hit targets in a radius %d #SLATE#[*]#LAST# cone, trying to %s
 This will also move you backwards by the same number of tiles.]])
 			:format(get(t.radius, self, t),
-							self:describeInflict('knockback', get(t.knockback, self, t)))
+							self:describeInflict('knockback', false, get(t.knockback, self, t)))
 	end,}
 
 newTalent {

@@ -123,8 +123,8 @@ newTalent {
 	no_energy = 'fake',
 	cooldown = function(self, t)
 		return self:hasEffect 'EFF_WEIRD_BURNING_RAGE' and
-			get(t.base_cooldown, self, t) or
-			get(t.rage_cooldown, self, t)
+			get(t.rage_cooldown, self, t) or
+			get(t.base_cooldown, self, t)
 	end,
 	base_cooldown = 10,
 	rage_cooldown = 6,

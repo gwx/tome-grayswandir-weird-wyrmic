@@ -22,7 +22,13 @@ local hook = function(self, data)
 			self:incEquilibrium(-gain)
 		end
 	end
-
 	self.damage_done = {}
+
+	-- equilibrium on block.
+	local on_block = self:attr 'equilibrium_on_block'
+	if self.block_done and on_block then
+		self:incEquilibrium(-on_block)
+	end
+	self.block_done = nil
 end
 class:bindHook('Actor:actBase:Effects', hook)

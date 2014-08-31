@@ -184,7 +184,7 @@ newTalent {
 	sustain_equilibrium = 20,
 	equilibrium_cost = function(self, t) return self:scale {low = 5, high = 2, limit = 1, t,} end,
 	retaliation_percent = function(self, t) return self:scale {low = 0.5, high = 2.0, t,} end,
-	duration = 4,
+	duration = function(self, t) return 4 end,
 	max_stacks = function(self, t)
 		return self:scale {low = 0, high = 3, t, after = 'floor',}
 	end,
@@ -382,9 +382,10 @@ newTalent {
 		self.talents_cd[t.id] =
 			math.max(self.talents_cd[t.id] or 0, aspect_cooldown(self, t, cd))
 	end,
-	tactical = {ATTACKAREA = 2,},
-	range = 0,
+	tactical = {ATTACKAREA = {COLD = 2,}, },
 	direct_hit = true,
+	requires_target = true,
+	range = 0,
 	radius = function(self, t) return self:scale {low = 5, high = 8, limit = 10, t, after = 'ceil',} end,
 	damage = function(self, t)
 		return self:scale {low = 35, high = 350, t, 'phys', after = 'damage',}

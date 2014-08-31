@@ -15,6 +15,7 @@
 
 
 local damage_type = require 'engine.DamageType'
+local get = util.getval
 
 newTalentType {
 	type = 'wild-gift/draconic-form',
@@ -25,17 +26,20 @@ newTalentType {
 newTalentType {
 	type = 'wild-gift/draconic-claw',
 	name = 'Draconic Claw',
-	description = 'Draconic Claw Strikes',}
+	description = 'Draconic Claw Strikes',
+	speed = 'weapon',}
 
 newTalentType {
 	type = 'wild-gift/draconic-aura',
 	name = 'Draconic Aura',
-	description = 'Draconic Auras',}
+	description = 'Draconic Auras',
+	is_mind = true,}
 
 newTalentType {
 	type = 'wild-gift/draconic-breath',
 	name = 'Draconic Breath',
-	description = 'Draconic Breaths',}
+	description = 'Draconic Breaths',
+	is_mind = true,}
 
 local make_require = function(tier)
 	return {
@@ -56,17 +60,19 @@ end
 local elements = {
 	fire = 'FIRE',
 	ice = 'COLD',
-	storm = 'LIGHTNING',
+	lightning = 'LIGHTNING',
 	sand = 'PHYSICAL',
-	blade = {text_color = '#CCCCCC#', immunity = 'cut', immunity_display = 'bleed',},}
+	blade = {text_color = '#CCCCCC#', immunity = 'cut', immunity_display = 'bleed',},
+	stone = {text_color = '#AA8833#', immunity = 'knockback', immunity_display = 'knockback',},}
 
 local known_elements = function(self)
 	local elements = {}
 	if self:knowTalentType 'wild-gift/fire-aspect' then table.insert(elements, 'fire') end
 	if self:knowTalentType 'wild-gift/ice-aspect' then table.insert(elements, 'ice') end
-	if self:knowTalentType 'wild-gift/storm-aspect' then table.insert(elements, 'storm') end
+	if self:knowTalentType 'wild-gift/lightning-aspect' then table.insert(elements, 'lightning') end
 	if self:knowTalentType 'wild-gift/sand-aspect' then table.insert(elements, 'sand') end
 	if self:knowTalentType 'wild-gift/blade-aspect' then table.insert(elements, 'blade') end
+	if self:knowTalentType 'wild-gift/stone-aspect' then table.insert(elements, 'stone') end
 	return elements
 end
 
@@ -91,7 +97,7 @@ local get_element_level = function(self, t, element, threshold)
 end
 
 local on_learn_claw = function(self, t)
-	local threshold = util.getval(t.threshold, self, t)
+	local threshold = get(t.threshold, self, t)
 	for _, element in ipairs(known_elements(self)) do
 		local claw = 'T_WEIRD_'..element:upper()..'_CLAW'
 		local level = get_element_level(self, t, element, threshold) or 0
@@ -120,12 +126,12 @@ newTalent {
 	threshold = 10,
 	passives = function(self, t, p)
 		self:talentTemporaryValue(
-			p, 'combat_physcrit', util.getval(t.combat_physcrit, self, t))
+			p, 'combat_physcrit', get(t.combat_physcrit, self, t))
 		on_learn_claw(self, t)
 	end,
 	on_unlearn = on_learn_claw,
 	info = function(self, t)
-		local threshold = util.getval(t.threshold, self, t)
+		local threshold = get(t.threshold, self, t)
 		local msg = ''
 		for _, element in ipairs(known_elements(self)) do
 			local typ = elements[element]
@@ -142,8 +148,8 @@ newTalent {
 
 You will also learn the following talents. They will all have a shared cooldown of %d #SLATE#[*]#LAST# :
 %s]])
-			:format(util.getval(t.combat_physcrit, self, t),
-							util.getval(t.shared_cooldown, self, t),
+			:format(get(t.combat_physcrit, self, t),
+							get(t.shared_cooldown, self, t),
 							msg)
 	end,}
 
@@ -161,7 +167,7 @@ newTalent {
 	end,
 	passives = function(self, t, p)
 		local resists = {}
-		local resist_mult = util.getval(t.resists, self, t)
+		local resist_mult = get(t.resists, self, t)
 		for _, element in ipairs(known_elements(self)) do
 			local typ = elements[element]
 			if type(typ) == 'string' then
@@ -176,13 +182,13 @@ newTalent {
 		end
 		self:talentTemporaryValue(p, 'resists', resists)
 		self:talentTemporaryValue(
-			p, 'combat_armor', util.getval(t.combat_armor, self, t))
+			p, 'combat_armor', get(t.combat_armor, self, t))
 		self:talentTemporaryValue(
-			p, 'combat_armor_hardiness', util.getval(t.combat_armor_hardiness, self, t))
+			p, 'combat_armor_hardiness', get(t.combat_armor_hardiness, self, t))
 	end,
 	info = function(self, t)
 		local msg = ''
-		local resist_mult = util.getval(t.resists, self, t)
+		local resist_mult = get(t.resists, self, t)
 		for _, element in ipairs(known_elements(self)) do
 			local typ = elements[element]
 			local name
@@ -202,13 +208,13 @@ newTalent {
 		return ([[Your body has hardened, giving you %d #SLATE#[*, con]#LAST# armour and %d%% #SLATE#[*]#LAST# hardiness.
 You will also get the following resists / immunities based on your elemental talents:
 %s]])
-			:format(util.getval(t.combat_armor, self, t),
-							util.getval(t.combat_armor_hardiness, self, t),
+			:format(get(t.combat_armor, self, t),
+							get(t.combat_armor_hardiness, self, t),
 							msg)
 	end,}
 
 local on_learn_aura = function(self, t)
-	local threshold = util.getval(t.threshold, self, t)
+	local threshold = get(t.threshold, self, t)
 	for _, element in ipairs(known_elements(self)) do
 		local aura = 'T_WEIRD_'..element:upper()..'_AURA'
 		local level = get_element_level(self, t, element, threshold) or 0
@@ -243,16 +249,16 @@ newTalent {
 	auto_relearn_passive = true,
 	passives = function(self, t, p)
 		self:talentTemporaryValue(
-			p, 'knockback_immune', util.getval(t.knockback_immune, self, t))
+			p, 'knockback_immune', get(t.knockback_immune, self, t))
 		self:talentTemporaryValue(
-			p, 'pin_immune', util.getval(t.pin_immune, self, t))
+			p, 'pin_immune', get(t.pin_immune, self, t))
 		self:talentTemporaryValue(
-			p, 'fear_immune', util.getval(t.fear_immune, self, t))
+			p, 'fear_immune', get(t.fear_immune, self, t))
 		on_learn_aura(self, t)
 	end,
 	on_unlearn = on_learn_aura,
 	info = function(self, t)
-		local threshold = util.getval(t.threshold, self, t)
+		local threshold = get(t.threshold, self, t)
 		local msg = ''
 		for _, element in ipairs(known_elements(self)) do
 			local typ = elements[element]
@@ -269,15 +275,15 @@ newTalent {
 
 You will also learn the following talents. They will all have a shared cooldown of %d #SLATE#[*]#LAST# :
 %s]])
-			:format(util.getval(t.knockback_immune, self, t) * 100,
-							util.getval(t.pin_immune, self, t) * 100,
-							util.getval(t.fear_immune, self, t) * 100,
-							util.getval(t.shared_cooldown, self, t),
+			:format(get(t.knockback_immune, self, t) * 100,
+							get(t.pin_immune, self, t) * 100,
+							get(t.fear_immune, self, t) * 100,
+							get(t.shared_cooldown, self, t),
 							msg)
 	end,}
 
 local on_learn_breath = function(self, t)
-	local threshold = util.getval(t.threshold, self, t)
+	local threshold = get(t.threshold, self, t)
 	for _, element in ipairs(known_elements(self)) do
 		local breath = 'T_WEIRD_'..element:upper()..'_BREATH'
 		local level = get_element_level(self, t, element, threshold) or 0
@@ -315,16 +321,16 @@ newTalent {
 	auto_relearn_passive = true,
 	passives = function(self, t, p)
 		self:talentTemporaryValue(
-			p, 'max_life', util.getval(t.max_life, self, t))
+			p, 'max_life', get(t.max_life, self, t))
 		self:talentTemporaryValue(
-			p, 'life_regen', util.getval(t.life_regen, self, t))
+			p, 'life_regen', get(t.life_regen, self, t))
 		self:talentTemporaryValue(
-			p, 'healing_factor', util.getval(t.healing_factor, self, t))
+			p, 'healing_factor', get(t.healing_factor, self, t))
 		on_learn_breath(self, t)
 	end,
 	on_unlearn = on_learn_breath,
 	info = function(self, t)
-		local threshold = util.getval(t.threshold, self, t)
+		local threshold = get(t.threshold, self, t)
 		local msg = ''
 		for _, element in ipairs(known_elements(self)) do
 			local typ = elements[element]
@@ -341,9 +347,9 @@ newTalent {
 
 You will also learn the following talents. They will all have a shared cooldown of %d #SLATE#[*]#LAST#:
 %s]])
-			:format(util.getval(t.max_life, self, t),
-							util.getval(t.life_regen, self, t),
-							util.getval(t.healing_factor, self, t) * 100,
-							util.getval(t.shared_cooldown, self, t),
+			:format(get(t.max_life, self, t),
+							get(t.life_regen, self, t),
+							get(t.healing_factor, self, t) * 100,
+							get(t.shared_cooldown, self, t),
 							msg)
 	end,}

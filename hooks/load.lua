@@ -16,6 +16,6 @@
 
 local class = require 'engine.class'
 
-for _, file in pairs{'actor', 'combat', 'data', 'damage-projector',} do
+for _, file in pairs{'actor', 'combat', 'data', 'damage-projector', 'entity', 'option'} do
 	dofile('hooks/grayswandir-weird-wyrmic/'..file..'.lua')
 end

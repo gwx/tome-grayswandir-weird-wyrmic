@@ -21,9 +21,9 @@ local particles = require 'engine.Particles'
 local get = util.getval
 
 newTalentType {
-	type = 'wild-gift/storm-aspect',
-	name = 'Storm Aspect',
-	description = 'Channel the lightning reflexes of the storm drakes.',
+	type = 'wild-gift/lightning-aspect',
+	name = 'Lightning Aspect',
+	description = 'Channel the lightning reflexes of the lightning drakes.',
 	allow_random = true,}
 
 local make_require = function(tier)
@@ -34,7 +34,7 @@ end
 
 newTalent {
 	name = 'Lightning Speed', short_name = 'WEIRD_LIGHTNING_SPEED',
-	type = {'wild-gift/storm-aspect', 1,},
+	type = {'wild-gift/lightning-aspect', 1,},
 	require = make_require(1),
 	points = 5,
 	equilibrium = 4,
@@ -50,8 +50,8 @@ newTalent {
 		local later = function()
 			local duration = get(t.duration, self, t)
 			local daze = 0
-			if self:knowTalent('T_WEIRD_STORM_ASPECT') then
-				daze = self:callTalent('T_WEIRD_STORM_ASPECT', 'daze_duration')
+			if self:knowTalent('T_WEIRD_LIGHTNING_ASPECT') then
+				daze = self:callTalent('T_WEIRD_LIGHTNING_ASPECT', 'daze_duration')
 			end
 			self:setEffect('EFF_WEIRD_LIGHTNING_SPEED', duration, {
 											 speed = get(t.speed, self, t),
@@ -70,7 +70,7 @@ newTalent {
 
 newTalent {
 	name = 'Rapid Strikes', short_name = 'WEIRD_RAPID_STRIKES',
-	type = {'wild-gift/storm-aspect', 2,},
+	type = {'wild-gift/lightning-aspect', 2,},
 	require = make_require(2),
 	points = 5,
 	equilibrium = 7,
@@ -92,6 +92,7 @@ newTalent {
 	target = function(self, t)
 		return {type = 'hit', talent = t, range = get(t.range, self, t),}
 	end,
+	requires_target = true,
 	on_learn = Talents.recalc_draconic_form,
 	on_unlearn = Talents.recalc_draconic_form,
 	action = function(self, t)
@@ -117,7 +118,7 @@ newTalent {
 
 newTalent {
 	name = 'Jitter', short_name = 'WEIRD_JITTER',
-	type = {'wild-gift/storm-aspect', 3,},
+	type = {'wild-gift/lightning-aspect', 3,},
 	require = make_require(3),
 	points = 5,
 	mode = 'sustained',
@@ -174,8 +175,8 @@ This will increase your #6FFF83#equilibrium#LAST# by %.2f on any game turn in wh
 	end,}
 
 newTalent {
-	name = 'Storm Aspect', short_name = 'WEIRD_STORM_ASPECT',
-	type = {'wild-gift/storm-aspect', 4,},
+	name = 'Lightning Aspect', short_name = 'WEIRD_LIGHTNING_ASPECT',
+	type = {'wild-gift/lightning-aspect', 4,},
 	require = make_require(4),
 	points = 5,
 	mode = 'passive',
@@ -208,7 +209,7 @@ newTalent {
 	info = function(self, t)
 		return ([[You have mastered your ability to manipulate lightning as a dragon would. You gain %d%% #SLATE#[*]#LAST# to all #ROYAL_BLUE#lightning#LAST# damage done, and %d%% #SLATE#[*]#LAST# #ROYAL_BLUE#lightning#LAST# resistance piercing. You recover %.1f #SLATE#[*]#LAST# #00FF74#equilibrium#LAST# on any turn in which you deal #ROYAL_BLUE#lightning#LAST# damage.
 While #38FF98#Lightning Speed#LAST# is active, all #ROYAL_BLUE#lightning#LAST# damage you do will #VIOLET#daze#LAST# #SLATE#[mind vs. phys, stun]#LAST# for %d #SLATE#[*]#LAST# turns.
-Points in this talent count double for the purposes of draconic form talents. All of your storm aspect draconic form talents set other elements on cooldown, and have their own cooldown set by other elements, by %d%% #SLATE#[*]#LAST# as much.]])
+Points in this talent count double for the purposes of draconic form talents. All of your lightning aspect draconic form talents set other elements on cooldown, and have their own cooldown set by other elements, by %d%% #SLATE#[*]#LAST# as much.]])
 			:format(get(t.inc_damage, self, t),
 							get(t.resists_pen, self, t),
 							get(t.equilibrium_gain, self, t),
@@ -217,14 +218,14 @@ Points in this talent count double for the purposes of draconic form talents. Al
 	end,}
 
 local aspect_cooldown = function(self, t, cooldown)
-	if self:knowTalent('T_WEIRD_STORM_ASPECT') then
-		cooldown = math.ceil(cooldown * 0.01 * self:callTalent('T_WEIRD_STORM_ASPECT', 'cooldown_mod'))
+	if self:knowTalent('T_WEIRD_LIGHTNING_ASPECT') then
+		cooldown = math.ceil(cooldown * 0.01 * self:callTalent('T_WEIRD_LIGHTNING_ASPECT', 'cooldown_mod'))
 	end
 	return cooldown
 end
 
 newTalent {
-	name = 'Storm Claw', short_name = 'WEIRD_STORM_CLAW',
+	name = 'Lightning Claw', short_name = 'WEIRD_LIGHTNING_CLAW',
 	type = {'wild-gift/draconic-claw', 1,}, hide = true,
 	points = 5,
 	equilibrium = 3,
@@ -273,7 +274,7 @@ newTalent {
 	end,}
 
 newTalent {
-	name = 'Storm Drake Aura', short_name = 'WEIRD_STORM_AURA',
+	name = 'Lightning Drake Aura', short_name = 'WEIRD_LIGHTNING_AURA',
 	type = {'wild-gift/draconic-aura', 1,}, hide = true,
 	points = 5,
 	equilibrium = 14,
@@ -333,7 +334,7 @@ newTalent {
 	end,}
 
 newTalent {
-	name = 'Storm Breath', short_name = 'WEIRD_STORM_BREATH',
+	name = 'Lightning Breath', short_name = 'WEIRD_LIGHTNING_BREATH',
 	type = {'wild-gift/draconic-breath', 1,}, hide = true,
 	points = 5,
 	equilibrium = 12,
