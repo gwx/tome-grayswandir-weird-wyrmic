@@ -421,7 +421,7 @@ newTalent {
 
 		self:alterTalentCoolingdown('T_WEIRD_GREAT_SLASH', -kills)
 
-		game.level.map:particleEmitter(self.x, self.y, tg.radius, 'breath_time', {
+		game.level.map:particleEmitter(self.x, self.y, tg.radius, 'breath_blade', {
 																		 radius = tg.radius,
 																		 tx = x - self.x,
 																		 ty = y - self.y,})
