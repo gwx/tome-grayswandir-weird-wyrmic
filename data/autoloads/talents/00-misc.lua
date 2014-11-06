@@ -16,6 +16,19 @@
 
 local get = util.getval
 
+Talents.recalc_draconic_form = function(self, t)
+ 	self:updateTalentTypeMastery('wild-gift/draconic-form')
+end
+
+Talents.cooldown_group = function(self, t, cd)
+	local tt = self:getTalentTypeFrom(t.type[1])
+	for _, talent in pairs(tt.talents) do
+		if talent.id ~= t.id and self:knowTalent(talent) then
+			self:callTalent(talent.id, 'set_group_cooldown', cd)
+		end
+	end
+end
+
 local block = Talents.talents_def.T_BLOCK
 local getBlockValue = block.getBlockValue
 block.on_pre_use = function(self, t, silent)

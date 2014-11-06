@@ -238,10 +238,13 @@ newTalent {
 	passives = function(self, t, p)
 		self:autoTemporaryValues(
 			p, {
-				equilibrium_on_wound = get(t.equilibrium_gain, self, t),
 				inc_wound_damage = get(t.inc_damage, self, t),
 				dammod_str_100_mult = get(t.dammod_mult, self, t),})
 	end,
+	callbackOnInflictTemporaryEffect = function(self, t, eff_id, e, p)
+		if e.subtype.wound then
+			self:incEquilibrium(-get(t.equilibrium_gain, self, t))
+			end end,
 	info = function(self, t)
 		return ([[You have mastered your ability to manipulate blades as a dragon would. You gain %d%% #SLATE#[*]#LAST# physical damage, and %d%% #SLATE#[*]#LAST# physical resistance piercing, for every wound a target has. You recover %.1f #SLATE#[*]#LAST# #00FF74#equilibrium#LAST# on any turn in which you inflict a wound. You treat all weapons as having the portion of their strength damage modifier over 100%% be %d%% #SLATE#[*]#LAST# as much #SLATE#(eg. 120%% -> %d%%#WHITE##SLATE#)#LAST#
 Points in this talent count double for the purposes of draconic form talents. All of your blade aspect draconic form talents set other elements on cooldown, and have their own cooldown set by other elements, by %d%% #SLATE#[*]#LAST# as much.]])

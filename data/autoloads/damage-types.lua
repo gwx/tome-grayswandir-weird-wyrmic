@@ -21,14 +21,6 @@ DamageType.dam_def.PHYSICAL.projector = function(src, x, y, type, dam)
 	local actor = game.level.map(x, y, map.ACTOR)
 	if not actor then return 0 end
 
-	if src and src.inc_burn_damage then
-		if _G.type(dam) == 'table' then
-			dam.dam = dam.dam * (100 + src.inc_burn_damage) * 0.01
-		else
-			dam = dam * (100 + src.inc_burn_damage) * 0.01
-		end
-	end
-
 	local temps = {}
 
 	if src and src.autoTemporaryValues then

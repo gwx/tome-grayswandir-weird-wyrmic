@@ -1,5 +1,3 @@
--- Weird Wyrmic, for Tales of Maj'Eyal.
---
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -14,16 +12,16 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-local map = require 'engine.Map'
+superload('mod.class.Actor', function(_M)
+		local init = _M.init
+		function _M:init(t, no_default)
+			init(self, t, no_default)
+			self.base_turn_procs = {}
+			end
 
--- Keep track of all damage you do during your turn.
-local hook = function(self, data)
-	local rapid = self.hasEffect and self:hasEffect('EFF_WEIRD_RAPID_STRIKES')
-	if rapid and data.type == 'LIGHTNING' and data.dam > 0 then
-		local target = game.level.map(data.x, data.y, map.ACTOR)
-		if target == rapid.target then
-			rapid.damage_done = true
-		end
-	end
-end
-class:bindHook('DamageProjector:final', hook)
+		local actBase = _M.actBase
+		function _M:actBase()
+			actBase(self)
+			self.base_turn_procs = {}
+			end
+		end)

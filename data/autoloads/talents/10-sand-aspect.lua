@@ -114,6 +114,7 @@ newTalent {
 	require = make_require(2),
 	points = 5,
 	mode = 'sustained',
+	unsustain_on_level_change = true,
 	no_energy = true,
 	cooldown = 12,
 	on_learn = Talents.recalc_draconic_form,

@@ -1,4 +1,4 @@
--- Weird Wyrmic, for Tales of Maj'Eyal.
+-- Gray's Illusions, for Tales of Maj'Eyal.
 --
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
@@ -14,16 +14,17 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-local map = require 'engine.Map'
+lib.require 'effect-source'
 
--- Keep track of all damage you do during your turn.
-local hook = function(self, data)
-	local rapid = self.hasEffect and self:hasEffect('EFF_WEIRD_RAPID_STRIKES')
-	if rapid and data.type == 'LIGHTNING' and data.dam > 0 then
-		local target = game.level.map(data.x, data.y, map.ACTOR)
-		if target == rapid.target then
-			rapid.damage_done = true
-		end
-	end
-end
-class:bindHook('DamageProjector:final', hook)
+superload('mod.class.Actor', function(_M)
+		_M.sustainCallbackCheck.callbackOnInflictTemporaryEffect =
+			'talents_on_inflict_temporary_effect'
+
+		local on_set_temporary_effect = _M.on_set_temporary_effect
+		function _M:on_set_temporary_effect(eff_id, e, p)
+			on_set_temporary_effect(self, eff_id, e, p)
+			if p.src and p.src.fireTalentCheck then
+				p.src:fireTalentCheck('callbackOnInflictTemporaryEffect', eff_id, e, p)
+				end
+			end
+		end)

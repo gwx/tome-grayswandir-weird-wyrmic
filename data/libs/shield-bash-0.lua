@@ -1,5 +1,3 @@
--- Weird Wyrmic, for Tales of Maj'Eyal.
---
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -14,14 +12,19 @@
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 
-local hook = function(self, data)
-  local load_data = function(loader, name)
-    require(loader):loadDefinition('/data-grayswandir-weird-wyrmic/'..name..'.lua')
-  end
-  load_data('engine.interface.ActorTalents', 'talents')
-  load_data('engine.interface.ActorTemporaryEffects', 'effects')
-	load_data('engine.Birther', 'birth')
-  load_data('engine.DamageType', 'damage-types')
-  load_data('grayswandir.inflict', 'inflicts')
-end
-class:bindHook('ToME:load', hook)
+class:bindHook('Combat:attackTargetWith', function(self, data)
+		local combat_shield_bash_chance = self:attr 'combat_shield_bash_chance'
+		if data.hitted and not data.target.dead and
+			combat_shield_bash_chance and
+			rng.percent(combat_shield_bash_chance) and
+			not self:attr '__shield_bash_disabled'
+		then
+			local shield = table.get(self:hasShield() or self, 'special_combat')
+			if shield then
+				self:attr('__shield_bash_disabled', 1)
+				game.logSeen(self, '%s performs an additional shield bash!', self.name:capitalize())
+				self:attackTargetWith(data.target, shield)
+				self:attr('__shield_bash_disabled', -1)
+				end
+			end
+		end)

@@ -498,7 +498,7 @@ newEffect {
 	deactivate = function(self, eff) end,
 	on_timeout = function(self, eff)
 		if eff.src and eff.is_wound then
-			eff.src:projectOn(self, 'PHYSICAL', damage)
+			eff.src:projectOn(self, 'PHYSICAL', eff.damage)
 		end
 	end,}
 
