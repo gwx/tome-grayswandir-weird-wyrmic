@@ -1,5 +1,3 @@
--- Weird Wyrmic, for Tales of Maj'Eyal.
---
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -13,17 +11,14 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-long_name = 'Weird Wyrmic'
-short_name = 'grayswandir-weird-wyrmic'
-for_module = 'tome'
-version = {1, 2, 5,}
-weight = 60
-author = {'grayswandir',}
-description = [[My own take at wyrmics. Adds the "Weird Wyrmic" class, which will be unlocked if you have wyrmics unlocked.]]
-tags = {'wyrmic', 'class', 'rework', 'weird',}
-
-hooks = true
-overload = true
-superload = true
-data = true
+-- List all temporary effects satisfying a filter.
+superload('mod.class.Actor', function(_M)
+		function _M:filterTemporaryEffects(filter)
+			local effects = {}
+			for id, parameters in pairs(self.tmp) do
+				local effect = self.tempeffect_def[id]
+				if filter(effect, parameters) then table.insert(effects, id) end
+				end
+			return effects
+			end
+		end)

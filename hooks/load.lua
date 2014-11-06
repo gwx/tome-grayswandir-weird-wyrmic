@@ -11,8 +11,19 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-
-__loading_addon = 'grayswandir-weird-wyrmic'
+-- Magic to find the current addon name.
+local index = 1
+local name, value
+while true do
+	name, value = debug.getlocal(3, index)
+	if not name then
+		error 'Could not find current addon name.'
+	elseif 'dir' == name then
+		__loading_addon = value:sub(8) -- strip off '/hooks/'
+		break
+	else
+		index = index + 1
+		end	end
 
 ----------------------------------------------------------------
 -- Libs System v1
@@ -129,8 +140,8 @@ if not __additional_superloads then
 			local superloads = _G.__additional_superloads[name] or {}
 			for id, index in pairs(superloads) do
 				if type(id) ~= 'number' then
-					local prev = base
 					local f = superloads[index]
+					local prev = base
 					base = function(name)
 						prev(name)
 						print('FROM', name, id, 'loading special.')
@@ -150,9 +161,10 @@ if not __additional_superloads then
 lib.require_all()
 
 -- Load all other hook files.
-for _, file in ipairs(fs.list '/hooks/grayswandir-weird-wyrmic/') do
+local hooks_dir = '/hooks/'..__loading_addon..'/'
+for _, file in ipairs(fs.list(hooks_dir)) do
 	if file ~= 'load.lua' then
-		dofile('/hooks/grayswandir-weird-wyrmic/'..file)
+		dofile(hooks_dir..file)
 		end
 	end
 

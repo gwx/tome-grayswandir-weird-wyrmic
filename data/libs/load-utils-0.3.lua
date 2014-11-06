@@ -36,7 +36,21 @@ util.dir_actions = {
 	ai = function(filename) require('engine.interface.ActorAI'):loadDefinition(filename) end,
 	achievements = function(filename) require('engine.interface.WorldAchievements'):loadDefinition(filename) end,
 	objects = 'object',
-	egos = 'ego',}
+	encounters = 'encounter',
+	stores = 'store',
+	egos = 'ego',
+	npcs = 'npc',}
+
+local entity_list = function(directory)
+	if directory:sub(-1) ~= '/' then directory = directory .. '/' end
+	return function(full, base)
+		local f, err = loadfile(full)
+		if err then error(err) end
+		class:bindHook('Entity:loadList', function(self, data)
+				if data.file ~= directory..base or data.loaded[full] then return end
+				self:loadList(full, data.no_default, data.res, data.mod, data.loaded)
+				end)
+		end end
 
 util.load_actions = {
 	birth = function(filename) require('engine.Birther'):loadDefinition(filename) end,
@@ -45,21 +59,14 @@ util.load_actions = {
 	lore = function(filename) require('mod.class.interface.PartyLore'):loadDefinition(filename) end,
 	damage_type = function(filename) require('engine.DamageType'):loadDefinition(filename) end,
 	autolevel = function(filename) require('engine.Autolevel'):loadDefinition(filename) end,
-	object = function(full, base)
-		local f, err = loadfile(full)
-		if err then error(err) end
-		class:bindHook('Entity:loadList', function(self, data)
-				if data.file ~= '/data/general/objects/'..base or data.loaded[full] then return end
-				self:loadList(full, data.no_default, data.res, data.mod, data.loaded)
-				end)
-		end,
-	ego = function(full, base)
-		local f, err = loadfile(full)
-		if err then error(err) end
-		class:bindHook('Entity:loadList', function(self, data)
-				if data.file ~= '/data/general/objects/egos/'..base or data.loaded[full] then return end
-				self:loadList(full, data.no_default, data.res, data.mod, data.loaded)
-				end)
+	object = entity_list '/data/general/objects/',
+	ego = entity_list '/data/general/objects/egos/',
+	npc = entity_list '/data/general/npcs/',
+	encounter = entity_list '/data/general/encounters/',
+	store = function(filename)
+		-- Won't work until 1.3. So we'll call that code directly.
+		-- mod.class.Store:loadStores(filename)
+		mod.class.Store:loadList(filename, nil, mod.class.Store.stores_def)
 		end,}
 
 util.file_actions = {
@@ -70,7 +77,8 @@ util.file_actions = {
 	['damage-types.lua'] = 'damage_type',
 	['damage_types.lua'] = 'damage_type',
 	['autolevels.lua'] = 'autolevel',
-	['autolevel_schemes.lua'] = 'autolevel',}
+	['autolevel_schemes.lua'] = 'autolevel',
+	['stores.lua'] = 'store',}
 
 --- Recursively load a directory according to file names.
 function util.load_dir(dir, mode)

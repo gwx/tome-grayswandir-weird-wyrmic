@@ -1,5 +1,3 @@
--- Weird Wyrmic, for Tales of Maj'Eyal.
---
 -- This program is free software: you can redistribute it and/or modify
 -- it under the terms of the GNU General Public License as published by
 -- the Free Software Foundation, either version 3 of the License, or
@@ -13,17 +11,19 @@
 -- You should have received a copy of the GNU General Public License
 -- along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+local om = grayswandir.class.OptionMaker.new {
+	options = options,
+	id_prefix = 'grayswandir_weird_wyrmic_',
+	name_prefix = 'Weird Wyrmic: ',}
 
-long_name = 'Weird Wyrmic'
-short_name = 'grayswandir-weird-wyrmic'
-for_module = 'tome'
-version = {1, 2, 5,}
-weight = 60
-author = {'grayswandir',}
-description = [[My own take at wyrmics. Adds the "Weird Wyrmic" class, which will be unlocked if you have wyrmics unlocked.]]
-tags = {'wyrmic', 'class', 'rework', 'weird',}
+om:boolean(
+	'original_drakes',
+	'Original Drakes',
+	false,
+	'This allows the original drake enemies to be generated.')
 
-hooks = true
-overload = true
-superload = true
-data = true
+om:boolean(
+	'weird_drakes',
+	'Weird Drakes',
+	true,
+	'This allows weird drake enemies to be generated.')

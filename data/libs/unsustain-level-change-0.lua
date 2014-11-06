@@ -28,7 +28,7 @@ superload('mod.class.Game', function(_M)
 		local changeLevelReal = _M.changeLevelReal
 		function _M:changeLevelReal(lev, zone, params)
 			local unsustains = {}
-			for _, tid in pairs(self.player.unsustain_level_change_talents) do
+			for _, tid in pairs(self.player.unsustain_level_change_talents or {}) do
 				if self.player:isTalentActive(tid) then
 					table.insert(unsustains, tid)
 					self.player:forceUseTalent(tid, {no_energy = true, ignore_cd = true,})
